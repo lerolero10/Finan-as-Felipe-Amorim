@@ -355,7 +355,7 @@ tbody td:first-child{text-align:left;font-weight:800;color:var(--dk);padding-lef
       <div class="auth-section-title" id="auth-pw-title">Sua senha</div>
       <div class="auth-err" id="auth-err">Senha incorreta. Tente novamente.</div>
       <div class="pw-wrap">
-        <input class="auth-input" type="password" id="auth-pw" placeholder="Digite sua senha" onkeydown="if(event.key==='Enter')doLogin()">
+        <input style="display:none" type="text" id="auth-username-hint" autocomplete="username"><input class="auth-input" type="password" id="auth-pw" placeholder="Digite sua senha" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
         <button class="pw-eye" onclick="togglePw('auth-pw',this)">👁</button>
       </div>
       <button class="auth-btn" onclick="doLogin()">Entrar →</button>
@@ -368,13 +368,13 @@ tbody td:first-child{text-align:left;font-weight:800;color:var(--dk);padding-lef
   <div id="auth-register" style="width:100%;display:none;flex-direction:column;align-items:center;padding:0 16px">
     <div class="auth-card">
       <div class="auth-section-title">Novo usuário</div>
-      <input class="auth-input" type="text" id="reg-nome" placeholder="Seu nome" maxlength="30">
+      <input class="auth-input" type="text" id="reg-nome" placeholder="Seu nome" maxlength="30" autocomplete="name">
       <div class="pw-wrap">
-        <input class="auth-input" type="password" id="reg-pw1" placeholder="Criar senha">
+        <input class="auth-input" type="password" id="reg-pw1" placeholder="Criar senha" autocomplete="new-password">
         <button class="pw-eye" onclick="togglePw('reg-pw1',this)">👁</button>
       </div>
       <div class="pw-wrap">
-        <input class="auth-input" type="password" id="reg-pw2" placeholder="Confirmar senha">
+        <input class="auth-input" type="password" id="reg-pw2" placeholder="Confirmar senha" autocomplete="new-password">
         <button class="pw-eye" onclick="togglePw('reg-pw2',this)">👁</button>
       </div>
       <div class="auth-err" id="reg-err">Confira os campos.</div>
@@ -643,6 +643,9 @@ function selectAuthUser(uid,nome){
   selAuthUser=uid;
   document.querySelectorAll('.user-item').forEach(function(el){el.classList.remove('sel');});
   var el=document.getElementById('ui-'+uid);if(el)el.classList.add('sel');
+  // Fill hidden username so browser can save/autofill the password
+  var hint=document.getElementById('auth-username-hint');
+  if(hint)hint.value=uid;
   var users=getUsers();
   var user=users.find(function(u){return u.id===uid;});
   var isPrimeiro=user&&(user.needsPw||!user.pwHash);
@@ -858,8 +861,15 @@ function autoSaldo(){
   var sr=DB.receitas.find(function(r){return r.nome.includes('Saldo Anterior');});
   if(!sr)return;
   var changed=false;
+  // Must update sequentially: each month depends on the previous
+  // Use running balance instead of reading sr.vals to avoid stale reads
   for(var i=1;i<12;i++){
-    var novo=calcSaldo(i);
+    // saldo[i] = saldo[i-1] + receitasBrutas[i-1] - despesas[i-1]
+    var p=i-1;
+    var antP=sr.vals[p]||0; // already updated in previous iteration
+    var recBruta=sR(5,p)+sR(20,p);
+    var despTotal=sD(5,p)+fatCiclo(5,p)+sD(20,p)+fatCiclo(20,p);
+    var novo=parseFloat((antP+recBruta-despTotal).toFixed(2));
     if(Math.abs((sr.vals[i]||0)-novo)>0.005){sr.vals[i]=novo;changed=true;}
   }
   if(changed)saveDB();
@@ -957,6 +967,34 @@ function confirmYear(){
   saveMeta({CU:CU,CA:CA});render();
 }
 
+function anualCard(){
+  var tRecAno=0,tDespAno=0;
+  for(var i=0;i<12;i++){tRecAno+=tR(i);tDespAno+=tD(i);}
+  var saldoAno=tRecAno-tDespAno;
+  var pctAno=tRecAno>0?Math.min(tDespAno/tRecAno*100,100):0;
+  var cor=saldoAno>=0?'var(--g3)':'var(--rd)';
+  return '<div class="cc" style="margin-bottom:0">'
+    +'<div class="cc-head" onclick="goPg(\'pg-anual\',document.getElementById(\'n-anual\'))">'
+      +'<div class="cc-info"><div class="cc-dot g">📊</div>'
+        +'<div><div class="cc-name">Acumulado '+CA+'</div>'
+        +'<div class="cc-date">Receitas - Despesas do ano</div></div></div>'
+      +'<div class="cc-bal"><div class="cc-bv" style="color:'+cor+'">'+fmt(saldoAno,false)+'</div>'
+        +'<div class="cc-bl">Saldo anual</div></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--gr4)">'
+      +'<div style="padding:10px 14px;border-right:1px solid var(--gr4)">'
+        +'<div style="font-size:10px;font-weight:800;color:var(--gr2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Receitas</div>'
+        +'<div style="font-size:14px;font-weight:900;color:var(--g3)">'+fmt(tRecAno,false)+'</div>'
+      +'</div>'
+      +'<div style="padding:10px 14px">'
+        +'<div style="font-size:10px;font-weight:800;color:var(--gr2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Despesas</div>'
+        +'<div style="font-size:14px;font-weight:900;color:var(--rd)">'+fmt(tDespAno,false)+'</div>'
+      +'</div>'
+    +'</div>'
+    +'<div class="cc-bar"><div class="cc-barf" style="width:'+pctAno.toFixed(1)+'%;background:'+(pctAno<70?'var(--g3)':pctAno<90?'var(--or)':'var(--rd)')+'"></div></div>'
+  +'</div>';
+}
+
 // ── RENDER ─────────────────────────────────────────
 function render(){autoSaldo();rHome();rC5();rC20();rAnual();rCards();}
 
@@ -990,7 +1028,7 @@ function rHome(){
         +'<div class="bal-val">'+(HB?'R$ ••••••':fmt(bal,false))+'</div>'
         +'<button class="eye-btn" onclick="HB=!HB;render()">'+(HB?'👁️':'🙈')+'</button>'
       +'</div>'
-      +'<div class="bal-sub">Receitas '+fmt(rec,false)+' · Despesas '+fmt(desp,false)+'</div>'
+      
       +'<div class="pills">'
         +'<div class="pill g">↑ '+fmt(rec,false)+'</div>'
         +'<div class="pill r">↓ '+fmt(desp,false)+'</div>'
@@ -1013,6 +1051,7 @@ function rHome(){
         +'<div class="ss">'+pct.toFixed(0)+'% comprometido</div>'
         +'<div class="prog"><div class="pf" style="width:'+pct+'%;background:'+(pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)')+'"></div></div>'
       +'</div></div></div>'
+    +anualCard()
     +'<div><div class="sh"><div class="st">5º Dia Útil</div><button class="sa" onclick="goPg(\'pg-c5\',document.getElementById(\'n-c5\'))">Ver tudo →</button></div>'
     +cicloCard(5,'5º Dia Útil','📅','g',sR(5,m),d5,b5,p5,d5top,m)+'</div>'
     +'<div><div class="sh"><div class="st">Dia 20</div><button class="sa" onclick="goPg(\'pg-c20\',document.getElementById(\'n-c20\'))">Ver tudo →</button></div>'
