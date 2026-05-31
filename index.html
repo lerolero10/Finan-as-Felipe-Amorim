@@ -597,14 +597,7 @@ function sR(c,m){return DB.receitas.filter(r=>r.ciclo===c).reduce((s,r)=>s+(r.va
 function sD(c,m){return DB.despesas.filter(d=>d.ciclo===c).reduce((s,d)=>s+(d.vals[m]||0),0)}
 function ant(m){const s=DB.receitas.find(r=>r.nome.includes('Saldo Anterior'));return s?(s.vals[m]||0):0}
 function tR(m){return sR(5,m)+sR(20,m)-ant(m)}
-function tD(m){
-  // faturas entram no ciclo do vencimento do cartão
-  const fat5=DB.cartoes.filter(c=>c.vencimento!==20).reduce((s,c)=>{
-    const f=DB.faturas[c.id];return s+(f?(f[m]||[]).reduce((ss,i)=>ss+i.val,0):0);},0);
-  const fat20=DB.cartoes.filter(c=>c.vencimento===20).reduce((s,c)=>{
-    const f=DB.faturas[c.id];return s+(f?(f[m]||[]).reduce((ss,i)=>ss+i.val,0):0);},0);
-  return sD(5,m)+fat5+sD(20,m)+fat20;
-}
+function tD(m){return sD(5,m)+fatTotalCiclo(5,m)+sD(20,m)+fatTotalCiclo(20,m)}
 
 function calcSaldoAnterior(m){
   if(m===0)return ant(0);
@@ -677,13 +670,29 @@ function chM(d){M=(M+d+12)%12;render()}
 function render(){rHome();rC5();rC20();rAnual();rCards();}
 
 function rHome(){
-  const m=M,rec=tR(m),desp=tD(m),bal=rec-desp,a=ant(m);
-  const r5=sR(5,m)-a,r20=sR(20,m),d5=sD(5,m),d20=sD(20,m);
-  const fTot=faturaTotal(null,m);
+  const m=M;
+  // faturas separadas por vencimento do cartão
+  const fat5=fatTotalCiclo(5,m);
+  const fat20=fatTotalCiclo(20,m);
+  const d5=sD(5,m)+fat5;
+  const d20=sD(20,m)+fat20;
+  const r5=sR(5,m)-ant(m);
+  const r20=sR(20,m);
+  const rec=r5+r20;
+  const desp=d5+d20;
+  const bal=rec-desp;
   const pct=rec>0?Math.min(desp/rec*100,100):0;
+  const b5=r5+ant(m)-d5; // balanço ciclo 5 (com saldo anterior)
+  const b20=r20-d20;
+  const p5=sR(5,m)>0?Math.min(d5/sR(5,m)*100,100):0;
+  const p20=r20>0?Math.min(d20/r20*100,100):0;
+  const fTot=fat5+fat20;
+  const a=ant(m);
   const nome=curUser==='raquel'?'Raquel':'Felipe A.';
   const init=curUser==='raquel'?'R':'FA';
   const anoLbl=DB.nomeAno?`${curAno} · ${DB.nomeAno}`:String(curAno);
+  const d5top=DB.despesas.filter(d=>d.ciclo===5&&(d.vals[m]||0)>0);
+  const d20top=DB.despesas.filter(d=>d.ciclo===20&&(d.vals[m]||0)>0);
 
   document.getElementById('hdr').innerHTML=`
     <div class="hdr-top">
@@ -710,26 +719,23 @@ function rHome(){
       <div class="hdr-pills">
         <div class="pill g">↑ ${fmt(rec,false)}</div>
         <div class="pill r">↓ ${fmt(desp,false)}</div>
-        ${fTot>0?`<div class="pill r">💳 Faturas ${fmt(fTot,false)}</div>`:''}
+        ${fTot>0?`<div class="pill r">💳 ${fmt(fTot,false)}</div>`:''}
         ${a!==0?`<div class="pill">→ ${fmt(a,false)}</div>`:''}
       </div>
     </div>`;
 
-  const b5=sR(5,m)-d5,b20=r20-d20;
-  const p5=sR(5,m)>0?Math.min(d5/sR(5,m)*100,100):0;
-  const p20=r20>0?Math.min(d20/r20*100,100):0;
-  const d5top=DB.despesas.filter(d=>d.ciclo===5&&(d.vals[m]||0)>0);
-  const d20top=DB.despesas.filter(d=>d.ciclo===20&&(d.vals[m]||0)>0);
-
   document.getElementById('home-c').innerHTML=`
     <div>
-      <div class="sh"><div class="st">Resumo</div><div style="font-size:10px;font-weight:700;color:var(--gray2)">← deslize para trocar mês →</div></div>
+      <div class="sh"><div class="st">Resumo</div><div style="font-size:10px;font-weight:700;color:var(--gray2)">← deslize →</div></div>
       <div class="sum-row">
         <div class="sum-card" style="cursor:pointer" onclick="openDetalhe('receitas',${m})">
-          <div class="sl">Receitas ›</div><div class="sv g">${fmt(rec,false)}</div><div class="ss">Dia 5: ${fmt(r5,false)}</div><div class="ss">Dia 20: ${fmt(r20,false)}</div>
+          <div class="sl">Receitas ›</div><div class="sv g">${fmt(rec,false)}</div>
+          <div class="ss">Dia 5: ${fmt(r5,false)}</div><div class="ss">Dia 20: ${fmt(r20,false)}</div>
         </div>
         <div class="sum-card" style="cursor:pointer" onclick="openDetalhe('despesas',${m})">
-          <div class="sl">Despesas ›</div><div class="sv r">${fmt(desp,false)}</div><div class="ss">${pct.toFixed(0)}% comprometido</div><div class="prog"><div class="pf" style="width:${pct}%;background:${pct<70?'var(--g3)':pct<90?'var(--orange)':'var(--red)'}"></div></div>
+          <div class="sl">Despesas ›</div><div class="sv r">${fmt(desp,false)}</div>
+          <div class="ss">${pct.toFixed(0)}% comprometido</div>
+          <div class="prog"><div class="pf" style="width:${pct}%;background:${pct<70?'var(--g3)':pct<90?'var(--orange)':'var(--red)'}"></div></div>
         </div>
       </div>
     </div>
@@ -773,15 +779,33 @@ function trocarPlanejamento(){
 
 // Retorna linhas de fatura de cartões que vencem neste ciclo, para o mês m
 function faturaRowsCiclo(ciclo, m) {
-  return DB.cartoes.filter(c=>(c.vencimento||5)===ciclo).map(c=>{
-    const tot=faturaTotal(c.id,m);
-    if(tot===0)return null;
-    return {id:'fat_'+c.id, nome:`Fatura ${c.nome}`, val:tot, cartao:c};
-  }).filter(Boolean);
+  if(!DB.faturas)return[];
+  return DB.cartoes
+    .filter(c=>(c.vencimento||5)===ciclo)
+    .map(c=>{
+      const tot=(DB.faturas[c.id]||{})[m]
+        ? (DB.faturas[c.id][m]||[]).reduce((s,i)=>s+i.val,0) : 0;
+      if(tot===0)return null;
+      return {id:'fat_'+c.id, nome:`Fatura ${c.nome}`, val:tot, cartao:c};
+    }).filter(Boolean);
 }
 function fatTotalCiclo(ciclo,m){
-  return DB.cartoes.filter(c=>(c.vencimento||5)===ciclo)
-    .reduce((s,c)=>s+faturaTotal(c.id,m),0);
+  if(!DB.faturas)return 0;
+  return DB.cartoes
+    .filter(c=>(c.vencimento||5)===ciclo)
+    .reduce((s,c)=>{
+      const f=DB.faturas[c.id];
+      return s+(f?(f[m]||[]).reduce((ss,i)=>ss+i.val,0):0);
+    },0);
+}
+function faturaTotal(cartaoId,m){
+  if(!DB.faturas)return 0;
+  if(cartaoId){
+    return((DB.faturas[cartaoId]||{})[m]||[]).reduce((s,i)=>s+i.val,0);
+  }
+  return DB.cartoes.reduce((s,c)=>{
+    return s+((DB.faturas[c.id]||{})[m]||[]).reduce((ss,i)=>ss+i.val,0);
+  },0);
 }
 
 function cicloCard(ciclo,label,icon,dotcls,rec,desp,bal,pct,itens,m){
