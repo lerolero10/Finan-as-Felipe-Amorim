@@ -502,7 +502,9 @@ const meta=getMeta();
 let curUser=meta.curUser||null;
 let curAno=meta.curAno||2026;
 let DB=defFelipe(2026);
-let M=0,hideBal=false,mCiclo=5,applyM='mes',editId=null,editArr=null,selPayment='pix',selCartaoId=null;
+const TODAY=new Date();
+let M=TODAY.getMonth(); // começa no mês vigente
+let hideBal=false,mCiclo=5,applyM='mes',editId=null,editArr=null,selPayment='pix',selCartaoId=null;
 let pendingUser=null,pendingAno=null;
 
 // ═══ PANELS ═════════════════════════════════════════
@@ -595,7 +597,28 @@ function sR(c,m){return DB.receitas.filter(r=>r.ciclo===c).reduce((s,r)=>s+(r.va
 function sD(c,m){return DB.despesas.filter(d=>d.ciclo===c).reduce((s,d)=>s+(d.vals[m]||0),0)}
 function ant(m){const s=DB.receitas.find(r=>r.nome.includes('Saldo Anterior'));return s?(s.vals[m]||0):0}
 function tR(m){return sR(5,m)+sR(20,m)-ant(m)}
-function tD(m){return sD(5,m)+sD(20,m)+faturaTotal(null,m)}
+function tD(m){
+  // faturas entram no ciclo do vencimento do cartão
+  const fat5=DB.cartoes.filter(c=>c.vencimento!==20).reduce((s,c)=>{
+    const f=DB.faturas[c.id];return s+(f?(f[m]||[]).reduce((ss,i)=>ss+i.val,0):0);},0);
+  const fat20=DB.cartoes.filter(c=>c.vencimento===20).reduce((s,c)=>{
+    const f=DB.faturas[c.id];return s+(f?(f[m]||[]).reduce((ss,i)=>ss+i.val,0):0);},0);
+  return sD(5,m)+fat5+sD(20,m)+fat20;
+}
+
+function calcSaldoAnterior(m){
+  if(m===0)return ant(0);
+  const prev=m-1;
+  const recPrev=tR(prev);
+  const despPrev=sD(5,prev)+sD(20,prev)+faturaTotal(null,prev);
+  return parseFloat((ant(prev)+recPrev-despPrev).toFixed(2));
+}
+function aplicarSaldoAutomatico(){
+  const sr=DB.receitas.find(r=>r.nome.includes('Saldo Anterior'));
+  if(!sr)return;
+  for(let m=1;m<12;m++) sr.vals[m]=calcSaldoAnterior(m);
+  saveDB();
+}
 
 // Fatura: soma todos os lançamentos de fatura do mês
 function faturaTotal(cartaoId,m){
@@ -702,8 +725,12 @@ function rHome(){
     <div>
       <div class="sh"><div class="st">Resumo</div><div style="font-size:10px;font-weight:700;color:var(--gray2)">← deslize para trocar mês →</div></div>
       <div class="sum-row">
-        <div class="sum-card"><div class="sl">Receitas</div><div class="sv g">${fmt(rec,false)}</div><div class="ss">Dia 5: ${fmt(r5,false)}</div><div class="ss">Dia 20: ${fmt(r20,false)}</div></div>
-        <div class="sum-card"><div class="sl">Despesas</div><div class="sv r">${fmt(desp,false)}</div><div class="ss">${pct.toFixed(0)}% comprometido</div><div class="prog"><div class="pf" style="width:${pct}%;background:${pct<70?'var(--g3)':pct<90?'var(--orange)':'var(--red)'}"></div></div></div>
+        <div class="sum-card" style="cursor:pointer" onclick="openDetalhe('receitas',${m})">
+          <div class="sl">Receitas ›</div><div class="sv g">${fmt(rec,false)}</div><div class="ss">Dia 5: ${fmt(r5,false)}</div><div class="ss">Dia 20: ${fmt(r20,false)}</div>
+        </div>
+        <div class="sum-card" style="cursor:pointer" onclick="openDetalhe('despesas',${m})">
+          <div class="sl">Despesas ›</div><div class="sv r">${fmt(desp,false)}</div><div class="ss">${pct.toFixed(0)}% comprometido</div><div class="prog"><div class="pf" style="width:${pct}%;background:${pct<70?'var(--g3)':pct<90?'var(--orange)':'var(--red)'}"></div></div>
+        </div>
       </div>
     </div>
     <div>
@@ -858,13 +885,15 @@ function rCards(){
     const items=(DB.faturas[c.id]||{})[m]||[];
     const tot=items.reduce((s,i)=>s+i.val,0);
     const pct=c.limite>0?Math.min(tot/c.limite*100,100):0;
+    const vencLbl=c.vencimento===20?'Dia 20':'5º Dia Útil';
+    const vencBadge=`<span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;background:${c.vencimento===20?'rgba(45,110,158,.2)':'rgba(82,168,117,.2)'};color:${c.vencimento===20?'#7dbfe0':'#a8f0c0'}">${vencLbl}</span>`;
     return`<div class="cartao-card">
       <div class="cartao-hdr" onclick="toggleFatura('fat-${c.id}')">
         <div class="cartao-hdr-top">
-          <div><div class="cartao-hdr-name">💳 ${c.nome}</div><div class="cartao-hdr-band">${c.bandeira} · Limite ${fmt(c.limite,false)}</div></div>
+          <div><div class="cartao-hdr-name">💳 ${c.nome}</div><div class="cartao-hdr-band">${c.bandeira} · ${vencBadge}</div></div>
           <button onclick="event.stopPropagation();delCartao('${c.id}')" style="background:rgba(255,77,77,.2);border:none;border-radius:8px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:12px;color:#ffb3b3">✕</button>
         </div>
-        <div class="cartao-fatura-lbl">Fatura ${MS3[m]}/${curAno}</div>
+        <div class="cartao-fatura-lbl">Fatura ${MS3[m]}/${curAno} · Limite ${fmt(c.limite,false)}</div>
         <div class="cartao-fatura-val">${fmt(tot,false)}</div>
         <div class="cartao-chips">
           <div class="cartao-chip">${items.length} lançamento(s)</div>
@@ -886,11 +915,15 @@ function rCards(){
               </div>
             </div>`).join('')}
         </div>
-        ${tot>0?`<div class="fatura-total"><div class="ft-lbl">Total da fatura</div><div class="ft-val">${fmt(tot,false)}</div></div>`:''}
+        ${tot>0?`<div class="fatura-total"><div class="ft-lbl">Total · entra no ciclo ${vencLbl}</div><div class="ft-val">${fmt(tot,false)}</div></div>`:''}
         <div class="add-row" onclick="openAddFatura('${c.id}',${m})"><div class="add-ico">+</div><div class="add-lbl">Lançar na fatura</div></div>
       </div>
     </div>`;
   }).join('');
+
+  const srec=DB.receitas.find(r=>r.nome.includes('Saldo Anterior'));
+  const antVal=srec?(srec.vals[m]||0):0;
+  const antCalc=calcSaldoAnterior(m);
 
   document.getElementById('cards-c').innerHTML=`
     <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
@@ -898,7 +931,21 @@ function rCards(){
         <div style="font-size:18px;font-weight:900;color:var(--dark)">Cartões</div>
         <div style="font-size:11px;color:var(--gray2);font-weight:600">${MS[m]} · ${curAno}</div>
       </div>
-      <div class="month-nav"><button class="mnb" onclick="chM(-1);goPg('pg-cards',document.getElementById('n-cards'))">‹</button><span>${MS3[m]}</span><button class="mnb" onclick="chM(1);goPg('pg-cards',document.getElementById('n-cards'))">›</button></div>
+      <div class="month-nav"><button class="mnb" onclick="chM(-1);render()">‹</button><span>${MS3[m]}</span><button class="mnb" onclick="chM(1);render()">›</button></div>
+    </div>
+    <div class="cc" style="margin-bottom:12px">
+      <div class="cc-head">
+        <div class="cc-info"><div class="cc-dot g">🔄</div><div><div class="cc-name">Saldo Anterior</div><div class="cc-date">${MS3[m]}/${curAno}</div></div></div>
+        <div class="cc-bal"><div class="cc-bv ${antVal>=0?'g':'r'}">${fmt(antVal,false)}</div><div class="cc-bl">Cadastrado</div></div>
+      </div>
+      <div class="ir" style="cursor:default">
+        <div class="ir-l"><div style="font-size:12px;color:var(--gray2);font-weight:700">Calculado automaticamente</div></div>
+        <div class="ir-r"><div class="ir-val ${antCalc>=0?'':'r'}">${fmt(antCalc,false)}</div></div>
+      </div>
+      <div class="add-row" onclick="aplicarSaldoAutomatico();render();toast('Saldo anterior atualizado ✓')">
+        <div class="add-ico">↻</div><div class="add-lbl">Aplicar saldo automático em todos os meses</div>
+      </div>
+      ${srec?`<div class="add-row" onclick="openModal('receita','${srec.id}')"><div class="add-ico" style="background:var(--redl);color:var(--red)">✎</div><div class="add-lbl" style="color:var(--gray)">Editar manualmente</div></div>`:''}
     </div>
     ${cards||'<div class="empty" style="padding:40px">Nenhum cartão cadastrado</div>'}
     <button class="btn-p" onclick="openAddCartao()">+ Novo Cartão</button>`;
@@ -912,19 +959,20 @@ function toggleFatura(id){
 function openAddFatura(cartaoId,mes){
   document.getElementById('sh-title').textContent='Lançar na Fatura';
   const c=DB.cartoes.find(x=>x.id===cartaoId);
+  const vencLbl=c?.vencimento===20?'Dia 20':'5º Dia Útil';
   document.getElementById('sh-body').innerHTML=`
-    <div style="background:var(--bluel);border-radius:10px;padding:10px 12px;margin-bottom:14px;font-size:12px;font-weight:800;color:var(--blue)">
-      💳 ${c?.nome||'Cartão'} · ${MS3[mes]}/${curAno}
+    <div style="background:var(--bluel);border-radius:10px;padding:10px 12px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:800;color:var(--blue)">💳 ${c?.nome||'Cartão'} · ${MS3[mes]}/${curAno}</div>
+      <div style="font-size:10px;font-weight:700;color:var(--gray2);margin-top:2px">Vencimento: ${vencLbl} · entra no ciclo ${vencLbl}</div>
     </div>
     <div class="field"><label>Descrição</label><input type="text" id="fn" placeholder="Ex: Supermercado, Roupa..."></div>
     <div class="field"><label>Valor (R$)</label><input type="number" id="fv" step="0.01" inputmode="decimal" placeholder="0,00"></div>
     <div class="field">
-      <label>É parcelado?</label>
+      <label>Parcelado?</label>
       <div class="fr2">
         <div class="field" style="margin:0"><label>Nº parcelas</label><input type="number" id="pn" min="1" max="120" value="1" inputmode="numeric"></div>
         <div class="field" style="margin:0"><label>Mês início</label><select id="pi">${MS3.map((mm,i)=>`<option value="${i}" ${i===mes?'selected':''}>${mm}</option>`).join('')}</select></div>
       </div>
-      <div class="hint" style="font-size:10px;color:var(--gray2);margin-top:5px;font-weight:700">Se parcelado em +1x, lança em meses seguintes automaticamente</div>
     </div>
     <button class="btn-p" onclick="saveFaturaItem('${cartaoId}',${mes})">Lançar</button>
     <button class="btn-s" onclick="closeSheet()">Cancelar</button>`;
@@ -964,17 +1012,31 @@ function openAddCartao(){
     <div class="field"><label>Bandeira</label>
       <select id="cb"><option>Mastercard</option><option>Visa</option><option>Elo</option><option>American Express</option></select></div>
     <div class="field"><label>Limite (R$)</label><input type="number" id="cl" step="100" inputmode="decimal" placeholder="5000"></div>
+    <div class="field"><label>Vencimento da fatura</label>
+      <div class="cg">
+        <div class="co a5" id="cv5" onclick="selVenc(5)"><div class="co-day">5º</div><div class="co-lbl">Dia Útil</div></div>
+        <div class="co" id="cv20" onclick="selVenc(20)"><div class="co-day">20</div><div class="co-lbl">Todo mês</div></div>
+      </div>
+    </div>
     <button class="btn-p" onclick="saveCartao()">Salvar Cartão</button>
     <button class="btn-s" onclick="closeSheet()">Cancelar</button>`;
   document.getElementById('overlay').classList.add('open');
+  window._selVenc=5;
+}
+
+function selVenc(v){
+  window._selVenc=v;
+  document.getElementById('cv5').className='co'+(v===5?' a5':'');
+  document.getElementById('cv20').className='co'+(v===20?' a20':'');
 }
 
 function saveCartao(){
   const nome=document.getElementById('cn')?.value.trim();if(!nome)return;
   const bandeira=document.getElementById('cb')?.value||'Mastercard';
   const limite=parseFloat(document.getElementById('cl')?.value)||0;
+  const vencimento=window._selVenc||5;
   if(!DB.faturas)DB.faturas={};
-  DB.cartoes.push({id:uid(),nome,bandeira,limite});
+  DB.cartoes.push({id:uid(),nome,bandeira,limite,vencimento});
   saveDB();closeSheet();render();toast(`Cartão "${nome}" adicionado ✓`);
 }
 
@@ -1183,6 +1245,36 @@ function delItem(arr,id){
   if(arr==='d')DB.despesas=DB.despesas.filter(x=>x.id!==id);
   else DB.receitas=DB.receitas.filter(x=>x.id!==id);
   saveDB();closeSheet();render();toast('Item removido');
+}
+
+function openDetalhe(tipo,m){
+  const isRec=tipo==='receitas';
+  document.getElementById('sh-title').textContent=`${isRec?'Receitas':'Despesas'} · ${MS3[m]}/${curAno}`;
+  const items=isRec?DB.receitas:DB.despesas;
+  const rows=items.map(item=>{
+    const v=item.vals[m]||0;
+    const tag=tagH(item);
+    const payT=!isRec&&item.pagamento?`<span class="pay-tag">${payLbl(item.pagamento,item.cartaoId)}</span>`:'';
+    return`<div class="ir" onclick="openModal('${isRec?'receita':'despesa'}','${item.id}')">
+      <div class="ir-l">
+        <div class="ir-ico ${isRec?'g':getIcoBg(item.tipo,true)}">${getIco(item.nome)}</div>
+        <div class="ir-txt"><div class="ir-name">${item.nome}</div><div class="ir-meta">${tag} ${payT}</div></div>
+      </div>
+      <div class="ir-r"><div class="ir-val ${v===0?'z':''}">${fmt(v)}</div></div>
+    </div>`;
+  }).join('');
+  const total=items.reduce((s,i)=>s+(i.vals[m]||0),0);
+  document.getElementById('sh-body').innerHTML=`
+    <div style="background:${isRec?'var(--gl)':'var(--redl)'};border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-size:11px;font-weight:800;color:${isRec?'var(--g1)':'var(--red)'};text-transform:uppercase;letter-spacing:.06em">Total ${isRec?'Receitas':'Despesas'}</div>
+      <div style="font-size:18px;font-weight:900;color:${isRec?'var(--g1)':'var(--red)'}">${fmt(total,false)}</div>
+    </div>
+    ${rows||'<div class="empty">Nenhum item</div>'}
+    <div style="margin-top:12px">
+      <button class="btn-p" onclick="closeSheet();openModal('${isRec?'receita':'despesa'}',null,null)">+ Novo item</button>
+      <button class="btn-s" onclick="closeSheet()">Fechar</button>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
 }
 
 function closeSheet(){document.getElementById('overlay').classList.remove('open');editId=null;}
