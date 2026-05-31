@@ -595,20 +595,46 @@ function migrateUser(userId){
 
 var selAuthUser=null;
 
+// Garante que usuários base (Felipe e Raquel) sempre existam
+// A senha (pwHash) é null até que o usuário defina no dispositivo
+// Isso permite que cada dispositivo tenha sua própria senha local
+function ensureBaseUsers(){
+  var users=getUsers();
+  var baseUsers=[
+    {id:'felipe',nome:'Felipe Amorim',initials:'FA',ciclos:[5,20]},
+    {id:'raquel',nome:'Raquel',initials:'R',ciclos:[5,20]}
+  ];
+  var changed=false;
+  baseUsers.forEach(function(b){
+    var exists=users.find(function(u){return u.id===b.id;});
+    if(!exists){
+      users.push({id:b.id,nome:b.nome,initials:b.initials,pwHash:null,ciclos:b.ciclos,needsPw:true,created:new Date().toISOString()});
+      changed=true;
+      // Garante que os dados base existam no localStorage deste dispositivo
+      var ano=new Date().getFullYear();
+      var key=dbKey(b.id,ano);
+      if(!localStorage.getItem(key)){
+        var nd=defData(b.id,ano);
+        localStorage.setItem(key,JSON.stringify(nd));
+      }
+    }
+  });
+  if(changed)saveUsers(users);
+}
+
 function buildAuthUserList(){
   var users=getUsers();
   var list=document.getElementById('auth-user-list');
   if(!list)return;
-  if(users.length===0){
-    list.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,.4);font-weight:700;text-align:center;padding:12px">Nenhum usuário. Crie um abaixo.</div>';
-    return;
-  }
   list.innerHTML=users.map(function(u){
     var ciclos=u.ciclos?u.ciclos.join(' e '):'5 e 20';
+    var isPrimeiro=u.needsPw||!u.pwHash;
+    var lockIcon=isPrimeiro?'🔓':'🔒';
+    var meta=isPrimeiro?'Toque para criar sua senha':'Ciclos: Dia '+ciclos;
     return '<div class="user-item" id="ui-'+u.id+'" onclick="selectAuthUser(\''+u.id+'\',\''+u.nome+'\')">'+
       '<div class="user-av">'+u.initials+'</div>'+
-      '<div class="user-info"><div class="user-name">'+u.nome+'</div><div class="user-meta">Ciclos: Dia '+ciclos+'</div></div>'+
-      '<div class="user-lock">🔒</div>'+
+      '<div class="user-info"><div class="user-name">'+u.nome+'</div><div class="user-meta">'+meta+'</div></div>'+
+      '<div class="user-lock">'+lockIcon+'</div>'+
     '</div>';
   }).join('');
 }
@@ -711,7 +737,7 @@ async function doRegister(){
   });
   if(legacy)migrateUser(legacy);
 
-  users.push({id:userId,nome:nome,initials:initials(nome),pwHash:hash,ciclos:ciclos,created:new Date().toISOString()});
+  users.push({id:userId,nome:nome,initials:initials(nome),pwHash:hash,ciclos:ciclos,needsPw:false,created:new Date().toISOString()});
   saveUsers(users);
 
   // Create default DB for new user
@@ -808,16 +834,35 @@ function fatCiclo(ciclo,m){
 }
 function tR(m){return sR(5,m)+sR(20,m)-antVal(m);}
 function tD(m){return sD(5,m)+fatCiclo(5,m)+sD(20,m)+fatCiclo(20,m);}
+
+// Saldo anterior correto: antAnterior + receitasBrutas(mes-1) - despesas(mes-1)
+// Usa receitas brutas (sem descontar saldo anterior) para evitar recursão errada
 function calcSaldo(m){
   if(m===0)return antVal(0);
   var p=m-1;
-  return parseFloat((antVal(p)+tR(p)-tD(p)).toFixed(2));
+  var recBruta=sR(5,p)+sR(20,p); // total bruto sem descontar saldo
+  var despTotal=sD(5,p)+fatCiclo(5,p)+sD(20,p)+fatCiclo(20,p);
+  var antP=antVal(p);
+  return parseFloat((antP+recBruta-despTotal).toFixed(2));
 }
+
 function aplicarSaldo(){
   var sr=DB.receitas.find(function(r){return r.nome.includes('Saldo Anterior');});
   if(!sr)return;
   for(var i=1;i<12;i++)sr.vals[i]=calcSaldo(i);
   saveDB();
+}
+
+// Atualiza saldo anterior automaticamente a cada render
+function autoSaldo(){
+  var sr=DB.receitas.find(function(r){return r.nome.includes('Saldo Anterior');});
+  if(!sr)return;
+  var changed=false;
+  for(var i=1;i<12;i++){
+    var novo=calcSaldo(i);
+    if(Math.abs((sr.vals[i]||0)-novo)>0.005){sr.vals[i]=novo;changed=true;}
+  }
+  if(changed)saveDB();
 }
 function tagH(d){
   if(d.parc)return '<span class="tag tp">'+d.parc.total+'x</span>';
@@ -913,7 +958,7 @@ function confirmYear(){
 }
 
 // ── RENDER ─────────────────────────────────────────
-function render(){rHome();rC5();rC20();rAnual();rCards();}
+function render(){autoSaldo();rHome();rC5();rC20();rAnual();rCards();}
 
 function rHome(){
   var m=M;
@@ -1198,8 +1243,7 @@ function rCards(){
         +'<div class="ir-l"><div style="font-size:12px;color:var(--gr2);font-weight:700">Calculado automaticamente</div></div>'
         +'<div class="ir-r"><div class="ir-vl '+(antC>=0?'':'r')+'">'+fmt(antC,false)+'</div></div>'
       +'</div>'
-      +'<div class="add-row" onclick="aplicarSaldo();render();toast(\'Saldo atualizado ✓\')">'
-        +'<div class="add-ic">↻</div><div class="add-lb">Aplicar saldo automático em todos os meses</div></div>'
+      +'<div style="padding:8px 15px;font-size:11px;font-weight:700;color:var(--gr2)">↻ Saldo calculado automaticamente a cada atualização</div>'
       +(sr?'<div class="add-row" onclick="openModal(\'receita\',\''+sr.id+'\')"><div class="add-ic" style="background:var(--rdl);color:var(--rd)">✎</div><div class="add-lb" style="color:var(--gr)">Editar manualmente</div></div>':'')
     +'</div>'
     +(cards||'<div class="empty" style="padding:40px">Nenhum cartão</div>')
@@ -1479,34 +1523,20 @@ function closeOut(e){if(e.target===document.getElementById('overlay'))closeSheet
 var toastT;
 function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(function(){el.classList.remove('show');},2200);}
 window.addEventListener('load',function(){
-  // Remove old panels (Felipe/Raquel hardcoded) — auth replaces them
+  // Remove old panels
   var pu=document.getElementById('pn-user');if(pu)pu.remove();
   var py=document.getElementById('pn-year');if(py)py.remove();
 
+  // Garante que Felipe e Raquel sempre existam na lista de usuários
+  // independente do dispositivo — senha é criada localmente na 1ª vez
+  ensureBaseUsers();
   buildAuthUserList();
-
-  // Check if Felipe/Raquel exist in users list yet — auto-create entries so they can just set a password
-  var users=getUsers();
-  var hasFelipe=users.find(function(u){return u.id==='felipe'||u.nome.toLowerCase().includes('felipe');});
-  var hasRaquel=users.find(function(u){return u.id==='raquel'||u.nome.toLowerCase().includes('raquel');});
-  var changed=false;
-  if(!hasFelipe&&localStorage.getItem('fin_felipe_2026')){
-    // Has existing Felipe data but no user entry — prompt first login
-    users.push({id:'felipe',nome:'Felipe Amorim',initials:'FA',pwHash:null,ciclos:[5,20],needsPw:true,created:new Date().toISOString()});
-    changed=true;
-  }
-  if(!hasRaquel&&localStorage.getItem('fin_raquel_2026')){
-    users.push({id:'raquel',nome:'Raquel',initials:'R',pwHash:null,ciclos:[5,20],needsPw:true,created:new Date().toISOString()});
-    changed=true;
-  }
-  if(changed){saveUsers(users);buildAuthUserList();}
 
   var session=getSession();
   if(session&&session.uid){
     var users2=getUsers();
     var user=users2.find(function(u){return u.id===session.uid;});
     if(user&&user.pwHash){
-      // Valid session — go straight in
       CU=session.uid;CA=new Date().getFullYear();
       DB=loadDB(CU,CA);saveMeta({CU:CU,CA:CA});
       hideAuth();render();
