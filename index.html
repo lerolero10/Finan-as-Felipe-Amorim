@@ -771,7 +771,25 @@ function trocarPlanejamento(){
   showPanel('panel-year');
 }
 
+// Retorna linhas de fatura de cartões que vencem neste ciclo, para o mês m
+function faturaRowsCiclo(ciclo, m) {
+  return DB.cartoes.filter(c=>(c.vencimento||5)===ciclo).map(c=>{
+    const tot=faturaTotal(c.id,m);
+    if(tot===0)return null;
+    return {id:'fat_'+c.id, nome:`Fatura ${c.nome}`, val:tot, cartao:c};
+  }).filter(Boolean);
+}
+function fatTotalCiclo(ciclo,m){
+  return DB.cartoes.filter(c=>(c.vencimento||5)===ciclo)
+    .reduce((s,c)=>s+faturaTotal(c.id,m),0);
+}
+
 function cicloCard(ciclo,label,icon,dotcls,rec,desp,bal,pct,itens,m){
+  const fatRows=faturaRowsCiclo(ciclo,m);
+  const despTotal=desp+fatRows.reduce((s,f)=>s+f.val,0);
+  const balReal=rec-despTotal;
+  const pctReal=rec>0?Math.min(despTotal/rec*100,100):0;
+
   const rows=itens.map(d=>`
     <div class="ir" onclick="openModal('despesa','${d.id}')">
       <div class="ir-l"><div class="ir-ico ${getIcoBg(d.tipo,true)}">${getIco(d.nome)}</div>
@@ -779,15 +797,25 @@ function cicloCard(ciclo,label,icon,dotcls,rec,desp,bal,pct,itens,m){
       <div class="ir-meta">${tagH(d)} <span class="pay-tag">${payLbl(d.pagamento,d.cartaoId)}</span></div></div></div>
       <div class="ir-r"><div class="ir-val">${fmt(d.vals[m]||0)}</div></div>
     </div>`).join('');
-  const pc=pct<70?'var(--g3)':pct<90?'var(--orange)':'var(--red)';
+
+  const fatHtml=fatRows.map(f=>`
+    <div class="ir" onclick="goPg('pg-cards',document.getElementById('n-cards'))">
+      <div class="ir-l"><div class="ir-ico b">💳</div>
+      <div class="ir-txt"><div class="ir-name">${f.nome}</div>
+      <div class="ir-meta"><span class="pay-tag">💳 Fatura · ${ciclo===20?'Dia 20':'5º Dia Útil'}</span></div></div></div>
+      <div class="ir-r"><div class="ir-val r" style="color:var(--red)">${fmt(f.val)}</div></div>
+    </div>`).join('');
+
+  const pc=pctReal<70?'var(--g3)':pctReal<90?'var(--orange)':'var(--red)';
   return`<div class="cc">
     <div class="cc-head">
       <div class="cc-info"><div class="cc-dot ${dotcls}">${icon}</div>
       <div><div class="cc-name">${label}</div><div class="cc-date">Rec: ${fmt(rec,false)}</div></div></div>
-      <div class="cc-bal"><div class="cc-bv ${bal>=0?'g':'r'}">${fmt(bal,false)}</div><div class="cc-bl">Balanço</div></div>
+      <div class="cc-bal"><div class="cc-bv ${balReal>=0?'g':'r'}">${fmt(balReal,false)}</div><div class="cc-bl">Balanço</div></div>
     </div>
-    <div class="cc-prog"><div class="cc-pf" style="width:${pct}%;background:${pc}"></div></div>
-    ${rows||'<div class="empty">Sem despesas</div>'}
+    <div class="cc-prog"><div class="cc-pf" style="width:${pctReal}%;background:${pc}"></div></div>
+    ${rows||''}${fatHtml}
+    ${!rows&&!fatHtml?'<div class="empty">Sem despesas</div>':''}
     <div class="add-row" onclick="openModal('despesa',null,${ciclo})"><div class="add-ico">+</div><div class="add-lbl">Adicionar despesa</div></div>
   </div>`;
 }
@@ -797,16 +825,23 @@ function rC20(){bldCiclo(20,'c20-c')}
 
 function bldCiclo(ciclo,elId){
   const m=M,rec=sR(ciclo,m),desp=sD(ciclo,m),a=ciclo===5?ant(m):0;
-  const recL=rec-a,bal=rec-desp,pct=rec>0?Math.min(desp/rec*100,100):0;
+  const recL=rec-a;
+  const fatRows=faturaRowsCiclo(ciclo,m);
+  const fatTot=fatRows.reduce((s,f)=>s+f.val,0);
+  const despTot=desp+fatTot;
+  const balReal=recL-despTot;
+  const pctReal=recL>0?Math.min(despTot/recL*100,100):0;
   const lbl=ciclo===5?'5º Dia Útil':'Dia 20';
   const bg='linear-gradient(160deg,var(--g1),var(--g2))';
-  const pc=pct<70?'rgba(168,240,192,.8)':pct<90?'rgba(255,200,100,.8)':'rgba(255,150,150,.8)';
+  const pc=pctReal<70?'rgba(168,240,192,.8)':pctReal<90?'rgba(255,200,100,.8)':'rgba(255,150,150,.8)';
+
   const rRows=DB.receitas.filter(r=>r.ciclo===ciclo).map(r=>`
     <div class="ir" onclick="openModal('receita','${r.id}')">
       <div class="ir-l"><div class="ir-ico g">${getIco(r.nome)}</div>
       <div class="ir-txt"><div class="ir-name">${r.nome}</div><div class="ir-meta">${tagH(r)}</div></div></div>
       <div class="ir-r"><div class="ir-val ${(r.vals[m]||0)===0?'z':''}">${fmt(r.vals[m]||0)}</div></div>
     </div>`).join('');
+
   const dRows=DB.despesas.filter(d=>d.ciclo===ciclo).map(d=>`
     <div class="ir" onclick="openModal('despesa','${d.id}')">
       <div class="ir-l"><div class="ir-ico ${getIcoBg(d.tipo,true)}">${getIco(d.nome)}</div>
@@ -814,6 +849,15 @@ function bldCiclo(ciclo,elId){
       <div class="ir-meta">${tagH(d)} <span class="pay-tag">${payLbl(d.pagamento,d.cartaoId)}</span></div></div></div>
       <div class="ir-r"><div class="ir-val ${(d.vals[m]||0)===0?'z':''}">${fmt(d.vals[m]||0)}</div></div>
     </div>`).join('');
+
+  const fatDRows=fatRows.map(f=>`
+    <div class="ir" onclick="goPg('pg-cards',document.getElementById('n-cards'))">
+      <div class="ir-l"><div class="ir-ico b">💳</div>
+      <div class="ir-txt"><div class="ir-name">${f.nome}</div>
+      <div class="ir-meta"><span class="pay-tag">💳 ${lbl}</span></div></div></div>
+      <div class="ir-r"><div class="ir-val" style="color:var(--red)">${fmt(f.val)}</div></div>
+    </div>`).join('');
+
   document.getElementById(elId).innerHTML=`
     <div style="background:${bg};padding:max(14px,var(--safe-top)) 18px 0">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -826,11 +870,11 @@ function bldCiclo(ciclo,elId){
       <div style="background:rgba(255,255,255,.12);border-radius:13px;padding:13px;margin-bottom:13px">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
           <div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Receitas</div><div style="font-size:13px;font-weight:900;color:#fff">${fmt(recL,false)}</div></div>
-          <div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Despesas</div><div style="font-size:13px;font-weight:900;color:#fff">${fmt(desp,false)}</div></div>
-          <div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Balanço</div><div style="font-size:13px;font-weight:900;color:${bal>=0?'#a8f0c0':'#ffb3b3'}">${fmt(bal,false)}</div></div>
+          <div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Despesas</div><div style="font-size:13px;font-weight:900;color:#fff">${fmt(despTot,false)}</div></div>
+          <div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Balanço</div><div style="font-size:13px;font-weight:900;color:${balReal>=0?'#a8f0c0':'#ffb3b3'}">${fmt(balReal,false)}</div></div>
         </div>
         <div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:11px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${pc};border-radius:2px"></div>
+          <div style="height:100%;width:${pctReal}%;background:${pc};border-radius:2px"></div>
         </div>
       </div>
     </div>
@@ -840,10 +884,14 @@ function bldCiclo(ciclo,elId){
           <div class="add-row" onclick="openModal('receita',null,${ciclo})"><div class="add-ico">+</div><div class="add-lbl">Adicionar receita</div></div></div>
       </div>
       <div><div class="sh"><div class="st">Despesas</div></div>
-        <div class="cc">${dRows||'<div class="empty">Sem despesas</div>'}
-          <div class="add-row" onclick="openModal('despesa',null,${ciclo})"><div class="add-ico">+</div><div class="add-lbl">Adicionar despesa</div></div></div>
+        <div class="cc">
+          ${dRows}${fatDRows}
+          ${!dRows&&!fatDRows?'<div class="empty">Sem despesas</div>':''}
+          <div class="add-row" onclick="openModal('despesa',null,${ciclo})"><div class="add-ico">+</div><div class="add-lbl">Adicionar despesa</div></div>
+        </div>
       </div>
     </div>`;
+}
 }
 
 function rAnual(){
