@@ -281,92 +281,111 @@ function initials(n){return n.trim().split(' ').filter(Boolean).slice(0,2).map(f
 // ── DADOS ──────────────────────────────────────────
 function defData(user,ano){
   var base={ano:ano,nomeAno:'',cartoes:[],faturas:{},receitas:[],despesas:[]};
+
+  // IDs fixos para os cartões base (para referência consistente)
+  var CID={
+    felipe:{itauGPA:'cid_felipe_itau',porto:'cid_felipe_porto'},
+    raquel:{nu:'cid_raquel_nu',pai:'cid_raquel_pai',itau:'cid_raquel_itau',pan:'cid_raquel_pan'}
+  };
+
   if(user==='raquel'){
+    // Cartões da Raquel — os valores mensais já estão nas despesas abaixo
+    // Fatura separada é usada apenas para novos lançamentos feitos no app
     base.cartoes=[
-      {id:uid(),nome:'Nubank',bandeira:'Mastercard',limite:6000,vencimento:5},
-      {id:uid(),nome:'Cartão Pai',bandeira:'Visa',limite:5000,vencimento:5},
-      {id:uid(),nome:'Itaú',bandeira:'Visa',limite:3000,vencimento:20},
-      {id:uid(),nome:'Banco PAN',bandeira:'Mastercard',limite:2000,vencimento:20}
+      {id:CID.raquel.nu,   nome:'Nubank',     bandeira:'Mastercard',limite:6000, vencimento:5},
+      {id:CID.raquel.pai,  nome:'Cartão Pai', bandeira:'Visa',       limite:5000, vencimento:5},
+      {id:CID.raquel.itau, nome:'Itaú',       bandeira:'Visa',       limite:3000, vencimento:20},
+      {id:CID.raquel.pan,  nome:'Banco PAN',  bandeira:'Mastercard', limite:2000, vencimento:20}
     ];
     base.receitas=[
-      {id:uid(),ciclo:5,nome:'Saldo Anterior',tipo:'eventual',vals:[1730.69,412.30,322.24,1121.68,1738.16,1100.00,192.05,342.03,784.18,2319.81,4260.73,6467.66]},
-      {id:uid(),ciclo:5,nome:'Salário Raquel',tipo:'fixo',vals:[2155.57,2342.46,2739.03,1197.57,2735.34,2500,2500,2500,2500,2500,2500,2500]},
-      {id:uid(),ciclo:5,nome:'Outros',tipo:'variavel',vals:[1561,1932,7418.96,2690.67,2233,2233,2233,2233,2233,2233,2233,2233]},
-      {id:uid(),ciclo:20,nome:'Salário Raquel',tipo:'fixo',vals:[1932.67,2195.39,1040.67,2230,2022,2195.39,2100,2100,2100,2100,2100,2100]}
+      {id:uid(),ciclo:5, nome:'Saldo Anterior', tipo:'eventual',vals:[1730.69,412.30,322.24,1121.68,1738.16,1100.00,192.05,342.03,784.18,2319.81,4260.73,6467.66]},
+      {id:uid(),ciclo:5, nome:'Salário Raquel', tipo:'fixo',    vals:[2155.57,2342.46,2739.03,1197.57,2735.34,2500,2500,2500,2500,2500,2500,2500]},
+      {id:uid(),ciclo:5, nome:'Outros',         tipo:'variavel',vals:[1561,1932,7418.96,2690.67,2233,2233,2233,2233,2233,2233,2233,2233]},
+      {id:uid(),ciclo:20,nome:'Salário Raquel', tipo:'fixo',    vals:[1932.67,2195.39,1040.67,2230,2022,2195.39,2100,2100,2100,2100,2100,2100]}
     ];
     base.despesas=[
-      {id:uid(),ciclo:5,nome:'Aluguel',tipo:'fixo',vals:[850,850,850,850,850,850,850,850,850,850,850,850],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Condomínio',tipo:'variavel',vals:[250.63,295.45,295.45,295.45,295.45,295.45,295.45,295.45,295.45,295.45,295.45,295.45],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Cartão Nu',tipo:'variavel',vals:[513.73,1924.04,2653.02,1074.17,1924.91,2271.24,804.45,413.20,148,148,116.35,100],parc:null,pag:'cc',cid:null},
-      {id:uid(),ciclo:5,nome:'Cartão Pai',tipo:'variavel',vals:[3225,2250.65,3325.96,2133.51,1516.25,2302.65,1860.97,1194.05,1115.77,710.48,476.12,381.68],parc:null,pag:'cc',cid:null},
-      {id:uid(),ciclo:5,nome:'Lourdes',tipo:'eventual',vals:[45,45,45,45,0,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Unha/Sobrancelha',tipo:'fixo',vals:[0,0,0,250,250,0,250,250,250,250,250,190],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Remédio',tipo:'fixo',vals:[0,0,0,0,70,0,70,70,70,70,70,70],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Lazer',tipo:'variavel',vals:[0,0,0,0,0,0,500,700,700,700,700,700],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Internet',tipo:'fixo',vals:[62.45,62.45,62.45,62.45,62.45,0,62.45,62.45,62.45,62.45,62.45,62.45],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Luz',tipo:'variavel',vals:[62.70,62.70,75.75,75.75,62.70,0,62.70,62.70,62.70,62.70,62.70,62.70],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Cofrinho',tipo:'fixo',vals:[0,0,0,0,0,0,0,700,700,700,700,700],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Mercado',tipo:'variavel',vals:[0,0,0,207,0,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Terapia',tipo:'eventual',vals:[175,0,0,0,0,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Auto Escola',tipo:'fixo',vals:[0,0,0,0,0,160,160,160,160,160,160,160],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Cartão Itaú',tipo:'variavel',vals:[511.45,555.06,1079.79,374.61,672.76,550,200,200,0,0,0,0],parc:null,pag:'cc',cid:null},
-      {id:uid(),ciclo:20,nome:'Mô-Praia',tipo:'fixo',vals:[375,375,190,190,190,190,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Celular',tipo:'fixo',vals:[65,65,65,70,70.71,70,70,70,70,70,70,70],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:20,nome:'Banco PAN',tipo:'variavel',vals:[126.14,191.83,226.20,0,223.69,0,0,0,0,0,0,0],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:20,nome:'Ricardo',tipo:'eventual',vals:[35,30,30,30,30,30,30,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Sogra',tipo:'eventual',vals:[150,0,0,0,0,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Plano de Saúde',tipo:'fixo',vals:[0,0,0,0,413,413,413,413,413,413,413,413],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:20,nome:'Mari - Dentista',tipo:'fixo',vals:[0,0,0,0,400,400,400,400,400,400,400,400],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'SERHS CC Porto',tipo:'eventual',vals:[0,0,0,304,304,304,304,200,0,0,0,0],parc:null,pag:'cc',cid:null},
-      {id:uid(),ciclo:20,nome:'Canetinha',tipo:'eventual',vals:[0,0,0,0,0,0,350,350,0,0,0,0],parc:null,pag:'pix',cid:null}
+      // ── CICLO 5 ──
+      {id:uid(),ciclo:5,nome:'Aluguel',        tipo:'fixo',    vals:[850,850,850,850,850,850,850,850,850,850,850,850],       parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Condomínio',     tipo:'variavel',vals:[250.63,295.45,295.45,295.45,295.45,295.45,295.45,295.45,295.45,295.45,295.45,295.45],parc:null,pag:'boleto',cid:null},
+      // Cartão Nu — despesa mensal do cartão, vence no Dia 5
+      {id:uid(),ciclo:5,nome:'Cartão Nu',      tipo:'variavel',vals:[513.73,1924.04,2653.02,1074.17,1924.91,2271.24,804.45,413.20,148,148,116.35,100], parc:null,pag:'cc',cid:CID.raquel.nu},
+      // Cartão Pai — despesa mensal do cartão, vence no Dia 5
+      {id:uid(),ciclo:5,nome:'Cartão Pai',     tipo:'variavel',vals:[3225,2250.65,3325.96,2133.51,1516.25,2302.65,1860.97,1194.05,1115.77,710.48,476.12,381.68],parc:null,pag:'cc',cid:CID.raquel.pai},
+      {id:uid(),ciclo:5,nome:'Lourdes',        tipo:'eventual',vals:[45,45,45,45,0,0,0,0,0,0,0,0],                          parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Unha/Sobrancelha',tipo:'fixo',   vals:[0,0,0,250,250,0,250,250,250,250,250,190],              parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Remédio',        tipo:'fixo',    vals:[0,0,0,0,70,0,70,70,70,70,70,70],                      parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Lazer',          tipo:'variavel',vals:[0,0,0,0,0,0,500,700,700,700,700,700],                  parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Internet',       tipo:'fixo',    vals:[62.45,62.45,62.45,62.45,62.45,0,62.45,62.45,62.45,62.45,62.45,62.45],parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Luz',            tipo:'variavel',vals:[62.70,62.70,75.75,75.75,62.70,0,62.70,62.70,62.70,62.70,62.70,62.70],parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Cofrinho',       tipo:'fixo',    vals:[0,0,0,0,0,0,0,700,700,700,700,700],                   parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Mercado',        tipo:'variavel',vals:[0,0,0,207,0,0,0,0,0,0,0,0],                            parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Terapia',        tipo:'eventual',vals:[175,0,0,0,0,0,0,0,0,0,0,0],                            parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Auto Escola',    tipo:'fixo',    vals:[0,0,0,0,0,160,160,160,160,160,160,160],               parc:null,pag:'pix',   cid:null},
+      // ── CICLO 20 ──
+      // Cartão Itaú — despesa mensal do cartão, vence no Dia 20
+      {id:uid(),ciclo:20,nome:'Cartão Itaú',  tipo:'variavel',vals:[511.45,555.06,1079.79,374.61,672.76,550,200,200,0,0,0,0],parc:null,pag:'cc',cid:CID.raquel.itau},
+      {id:uid(),ciclo:20,nome:'Mô-Praia',     tipo:'fixo',    vals:[375,375,190,190,190,190,0,0,0,0,0,0],                  parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:20,nome:'Celular',       tipo:'fixo',    vals:[65,65,65,70,70.71,70,70,70,70,70,70,70],              parc:null,pag:'boleto',cid:null},
+      // Banco PAN — despesa mensal, vence no Dia 20
+      {id:uid(),ciclo:20,nome:'Banco PAN',     tipo:'variavel',vals:[126.14,191.83,226.20,0,223.69,0,0,0,0,0,0,0],         parc:null,pag:'cc',cid:CID.raquel.pan},
+      {id:uid(),ciclo:20,nome:'Ricardo',       tipo:'eventual',vals:[35,30,30,30,30,30,30,0,0,0,0,0],                      parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:20,nome:'Sogra',         tipo:'eventual',vals:[150,0,0,0,0,0,0,0,0,0,0,0],                            parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:20,nome:'Plano de Saúde',tipo:'fixo',   vals:[0,0,0,0,413,413,413,413,413,413,413,413],              parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:20,nome:'Mari - Dentista',tipo:'fixo',  vals:[0,0,0,0,400,400,400,400,400,400,400,400],              parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:20,nome:'SERHS CC Porto',tipo:'eventual',vals:[0,0,0,304,304,304,304,200,0,0,0,0],                   parc:null,pag:'cc',   cid:null},
+      {id:uid(),ciclo:20,nome:'Canetinha',     tipo:'eventual',vals:[0,0,0,0,0,0,350,350,0,0,0,0],                         parc:null,pag:'pix',   cid:null}
     ];
   } else {
     // Felipe 2025
     base.cartoes=[
-      {id:uid(),nome:'CC Itaú GPA',bandeira:'Visa',limite:5000,vencimento:5},
-      {id:uid(),nome:'CC Porto Seguro',bandeira:'Mastercard',limite:4000,vencimento:20}
+      {id:CID.felipe.itauGPA,nome:'CC Itaú GPA',    bandeira:'Visa',       limite:5000,vencimento:5},
+      {id:CID.felipe.porto,  nome:'CC Porto Seguro', bandeira:'Mastercard', limite:4000,vencimento:20}
     ];
     base.receitas=[
-      {id:uid(),ciclo:5,nome:'Saldo Anterior',tipo:'eventual',vals:[0,0.25,-120,0,0,208.60,1239.20,2068.80,3898.40,7029.40,10160.40,13291.40]},
-      {id:uid(),ciclo:5,nome:'Salário Felipe',tipo:'fixo',vals:[2375,3179,3721,1700,3721,3721,3721,3721,3721,3721,3721,3721]},
-      {id:uid(),ciclo:5,nome:'Outros',tipo:'variavel',vals:[2800,4466,11000,1866,4000,4000,4000,4000,4000,4000,4000,4000]},
-      {id:uid(),ciclo:5,nome:'Bônus',tipo:'eventual',vals:[0,0,5000,0,0,0,0,0,0,0,0,0]},
-      {id:uid(),ciclo:20,nome:'Salário Felipe',tipo:'fixo',vals:[2404.25,2400,1110,2150,2150,2150,2150,2150,2150,2150,2150,2150]}
+      {id:uid(),ciclo:5, nome:'Saldo Anterior', tipo:'eventual',vals:[0,0.25,-120,0,0,208.60,1239.20,2068.80,3898.40,7029.40,10160.40,13291.40]},
+      {id:uid(),ciclo:5, nome:'Salário Felipe', tipo:'fixo',    vals:[2375,3179,3721,1700,3721,3721,3721,3721,3721,3721,3721,3721]},
+      {id:uid(),ciclo:5, nome:'Outros',         tipo:'variavel',vals:[2800,4466,11000,1866,4000,4000,4000,4000,4000,4000,4000,4000]},
+      {id:uid(),ciclo:5, nome:'Bônus',          tipo:'eventual',vals:[0,0,5000,0,0,0,0,0,0,0,0,0]},
+      {id:uid(),ciclo:20,nome:'Salário Felipe', tipo:'fixo',    vals:[2404.25,2400,1110,2150,2150,2150,2150,2150,2150,2150,2150,2150]}
     ];
     base.despesas=[
-      {id:uid(),ciclo:5,nome:'Gasolina',tipo:'variavel',vals:[800,600,600,430,800,800,800,800,800,800,800,800],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Claro Felipe',tipo:'fixo',vals:[180,180,180,180,180,180,180,180,180,180,180,180],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Empréstimo Carro',tipo:'fixo',vals:[940,980,980,980,980,980,980,980,980,980,980,980],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'TV Tio',tipo:'fixo',vals:[235,235,235,235,235,235,235,235,235,235,235,235],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'VT',tipo:'fixo',vals:[100,100,100,100,100,100,100,100,100,100,100,100],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'YT Premium/Netflix',tipo:'fixo',vals:[65,65,65,65,65,65,65,65,65,65,65,65],parc:null,pag:'cc',cid:null},
-      {id:uid(),ciclo:5,nome:'Água',tipo:'variavel',vals:[0,150,35,35,30,150,150,150,150,150,150,150],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Plano de Saúde',tipo:'fixo',vals:[0,0,0,0,380,380,380,380,380,380,380,380],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Mercado',tipo:'variavel',vals:[711,200,300,300,700,700,700,700,700,700,700,700],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Cabelo e Barba',tipo:'fixo',vals:[180,180,180,180,180,180,180,180,180,180,180,180],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Seguro do Carro',tipo:'eventual',vals:[0,0,0,310,310,0,0,0,0,0,0,0],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Cofrinho',tipo:'fixo',vals:[0,0,0,0,0,700,700,700,700,700,700,700],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'SERHS',tipo:'eventual',vals:[0,0,5000,0,0,0,0,0,0,0,0,0],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Viagem',tipo:'eventual',vals:[0,0,4343,0,0,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'IPVA',tipo:'eventual',vals:[388,388,388,388,852,0,0,0,0,0,0,0],parc:{total:5,parcela:1},pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Lazer + Compras',tipo:'variavel',vals:[0,500,1860,0,0,1000,1000,1000,1000,1000,1000,1000],parc:null,pag:'cc',cid:null},
-      {id:uid(),ciclo:5,nome:'Pagamento Erika',tipo:'fixo',vals:[0,0,0,0,0,0,1000,1000,1000,1000,1000,1000],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'CC Itaú GPA',tipo:'variavel',vals:[1800,1400,1400,1120,700,0,0,0,0,0,0,0],parc:null,pag:'cc',cid:null},
-      {id:uid(),ciclo:5,nome:'MBA',tipo:'fixo',vals:[270,270,270,270,270,270,270,270,270,270,270,270],parc:null,pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Show',tipo:'eventual',vals:[0,1000,0,0,0,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Filtro Sogro',tipo:'eventual',vals:[0,120,120,120,120,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Geladeira',tipo:'eventual',vals:[0,0,700,0,0,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'SERHS Sogro',tipo:'eventual',vals:[0,0,0,241.40,241.40,241.40,241.40,241.40,0,0,0,0],parc:{total:5,parcela:1},pag:'boleto',cid:null},
-      {id:uid(),ciclo:5,nome:'Drywall Banheiro',tipo:'eventual',vals:[0,500,0,0,0,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:5,nome:'Empréstimo Sr. Rafael',tipo:'eventual',vals:[1000,1000,0,0,0,1000,1000,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'CC Porto Seguro',tipo:'variavel',vals:[1560,2297.25,2600,1060,1859,1859,1060,1060,0,0,0,0],parc:null,pag:'cc',cid:null},
-      {id:uid(),ciclo:20,nome:'Praia',tipo:'fixo',vals:[350,350,350,350,350,350,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Revisão Carro (1)',tipo:'eventual',vals:[0,0,0,112.93,112.93,112.93,112.93,112.93,0,0,0,0],parc:{total:5,parcela:1},pag:'cc',cid:null},
-      {id:uid(),ciclo:20,nome:'Revisão Carro (2)',tipo:'eventual',vals:[0,0,0,116.68,116.68,116.68,0,0,0,0,0,0],parc:{total:3,parcela:1},pag:'cc',cid:null},
-      {id:uid(),ciclo:20,nome:'Projetinho',tipo:'eventual',vals:[0,0,0,0,380,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Amor',tipo:'eventual',vals:[0,0,0,0,600,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Presente Mãe + Fran',tipo:'eventual',vals:[0,0,0,0,400,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Almoço',tipo:'eventual',vals:[0,0,0,0,880,0,0,0,0,0,0,0],parc:null,pag:'pix',cid:null}
+      // ── CICLO 5 ──
+      {id:uid(),ciclo:5,nome:'Gasolina',           tipo:'variavel',vals:[800,600,600,430,800,800,800,800,800,800,800,800],        parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Claro Felipe',        tipo:'fixo',    vals:[180,180,180,180,180,180,180,180,180,180,180,180],        parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Empréstimo Carro',    tipo:'fixo',    vals:[940,980,980,980,980,980,980,980,980,980,980,980],        parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'TV Tio',              tipo:'fixo',    vals:[235,235,235,235,235,235,235,235,235,235,235,235],        parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'VT',                  tipo:'fixo',    vals:[100,100,100,100,100,100,100,100,100,100,100,100],        parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'YT Premium/Netflix',  tipo:'fixo',    vals:[65,65,65,65,65,65,65,65,65,65,65,65],                   parc:null,pag:'cc',    cid:CID.felipe.itauGPA},
+      {id:uid(),ciclo:5,nome:'Água',                tipo:'variavel',vals:[0,150,35,35,30,150,150,150,150,150,150,150],            parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Plano de Saúde',      tipo:'fixo',    vals:[0,0,0,0,380,380,380,380,380,380,380,380],               parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Mercado',             tipo:'variavel',vals:[711,200,300,300,700,700,700,700,700,700,700,700],        parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Cabelo e Barba',      tipo:'fixo',    vals:[180,180,180,180,180,180,180,180,180,180,180,180],        parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Seguro do Carro',     tipo:'eventual',vals:[0,0,0,310,310,0,0,0,0,0,0,0],                          parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Cofrinho',            tipo:'fixo',    vals:[0,0,0,0,0,700,700,700,700,700,700,700],                 parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'SERHS',               tipo:'eventual',vals:[0,0,5000,0,0,0,0,0,0,0,0,0],                           parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Viagem',              tipo:'eventual',vals:[0,0,4343,0,0,0,0,0,0,0,0,0],                           parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'IPVA',                tipo:'eventual',vals:[388,388,388,388,852,0,0,0,0,0,0,0],                    parc:{total:5,parcela:1},pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Lazer + Compras',     tipo:'variavel',vals:[0,500,1860,0,0,1000,1000,1000,1000,1000,1000,1000],    parc:null,pag:'cc',    cid:CID.felipe.itauGPA},
+      {id:uid(),ciclo:5,nome:'Pagamento Erika',     tipo:'fixo',    vals:[0,0,0,0,0,0,1000,1000,1000,1000,1000,1000],            parc:null,pag:'pix',   cid:null},
+      // CC Itaú GPA — fatura mensal paga no Dia 5
+      {id:uid(),ciclo:5,nome:'CC Itaú GPA',         tipo:'variavel',vals:[1800,1400,1400,1120,700,0,0,0,0,0,0,0],               parc:null,pag:'cc',    cid:CID.felipe.itauGPA},
+      {id:uid(),ciclo:5,nome:'MBA',                 tipo:'fixo',    vals:[270,270,270,270,270,270,270,270,270,270,270,270],        parc:null,pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Show',                tipo:'eventual',vals:[0,1000,0,0,0,0,0,0,0,0,0,0],                           parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Filtro Sogro',        tipo:'eventual',vals:[0,120,120,120,120,0,0,0,0,0,0,0],                      parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Geladeira',           tipo:'eventual',vals:[0,0,700,0,0,0,0,0,0,0,0,0],                           parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'SERHS Sogro',         tipo:'eventual',vals:[0,0,0,241.40,241.40,241.40,241.40,241.40,0,0,0,0],    parc:{total:5,parcela:1},pag:'boleto',cid:null},
+      {id:uid(),ciclo:5,nome:'Drywall Banheiro',    tipo:'eventual',vals:[0,500,0,0,0,0,0,0,0,0,0,0],                           parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:5,nome:'Empréstimo Sr. Rafael',tipo:'eventual',vals:[1000,1000,0,0,0,1000,1000,0,0,0,0,0],               parc:null,pag:'pix',   cid:null},
+      // ── CICLO 20 ──
+      // CC Porto Seguro — fatura mensal paga no Dia 20
+      {id:uid(),ciclo:20,nome:'CC Porto Seguro',    tipo:'variavel',vals:[1560,2297.25,2600,1060,1859,1859,1060,1060,0,0,0,0],  parc:null,pag:'cc',    cid:CID.felipe.porto},
+      {id:uid(),ciclo:20,nome:'Praia',              tipo:'fixo',    vals:[350,350,350,350,350,350,0,0,0,0,0,0],                 parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:20,nome:'Revisão Carro (1)',  tipo:'eventual',vals:[0,0,0,112.93,112.93,112.93,112.93,112.93,0,0,0,0],   parc:{total:5,parcela:1},pag:'cc',cid:CID.felipe.porto},
+      {id:uid(),ciclo:20,nome:'Revisão Carro (2)',  tipo:'eventual',vals:[0,0,0,116.68,116.68,116.68,0,0,0,0,0,0],             parc:{total:3,parcela:1},pag:'cc',cid:CID.felipe.porto},
+      {id:uid(),ciclo:20,nome:'Projetinho',         tipo:'eventual',vals:[0,0,0,0,380,0,0,0,0,0,0,0],                          parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:20,nome:'Amor',               tipo:'eventual',vals:[0,0,0,0,600,0,0,0,0,0,0,0],                          parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:20,nome:'Presente Mãe + Fran',tipo:'eventual',vals:[0,0,0,0,400,0,0,0,0,0,0,0],                         parc:null,pag:'pix',   cid:null},
+      {id:uid(),ciclo:20,nome:'Almoço',             tipo:'eventual',vals:[0,0,0,0,880,0,0,0,0,0,0,0],                          parc:null,pag:'pix',   cid:null}
     ];
   }
   return base;
