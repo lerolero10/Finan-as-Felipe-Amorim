@@ -724,12 +724,12 @@ function bldCiclo(ciclo,elId){
   var pct=rec>0?Math.min(desp/rec*100,100):0;
   var lbl=ciclo===5?'5º Dia Útil':'Dia 20';
   var pc=pct<70?'rgba(168,240,192,.8)':pct<90?'rgba(255,200,100,.8)':'rgba(255,150,150,.8)';
-  var rRows=DB.receitas.filter(function(r){return r.ciclo===ciclo&&r.nome!=='Saldo Anterior';}).map(function(r){
+  var rRows=DB.receitas.filter(function(r){return r.ciclo===ciclo&&r.nome!=='Saldo Anterior'&&(r.vals[m]||0)!==0;}).map(function(r){
     return '<div class="ir" onclick="openModal(\'receita\',\''+r.id+'\')"><div class="ir-l"><div class="ir-ic g">'+getIco(r.nome)+'</div>'
       +'<div class="ir-tx"><div class="ir-nm">'+r.nome+'</div><div class="ir-mt">'+tagH(r)+'</div></div></div>'
       +'<div class="ir-r"><div class="ir-vl '+((r.vals[m]||0)===0?'z':'')+'">'+fmt(r.vals[m]||0)+'</div></div></div>';
   }).join('');
-  var dRows=DB.despesas.filter(function(d){return d.ciclo===ciclo;}).map(function(d){
+  var dRows=DB.despesas.filter(function(d){return d.ciclo===ciclo&&(d.vals[m]||0)!==0;}).map(function(d){
     return '<div class="ir" onclick="openModal(\'despesa\',\''+d.id+'\')"><div class="ir-l"><div class="ir-ic '+getIcoBg(d.tipo)+'">'+getIco(d.nome)+'</div>'
       +'<div class="ir-tx"><div class="ir-nm">'+d.nome+'</div>'
       +'<div class="ir-mt">'+tagH(d)+' <span class="pt">'+pagLbl(d.pag,d.cid)+'</span></div></div></div>'
@@ -1079,7 +1079,7 @@ function delItem(arr,id){
 function openDetalhe(tipo,m){
   var isRec=tipo==='rec';
   document.getElementById('sh-tl').textContent=(isRec?'Receitas':'Despesas')+' · '+MS3[m]+'/'+CA;
-  var items=isRec?DB.receitas.filter(function(r){return r.nome!=='Saldo Anterior';}):DB.despesas;
+  var items=isRec?DB.receitas.filter(function(r){return r.nome!=='Saldo Anterior'&&(r.vals[m]||0)!==0;}):DB.despesas.filter(function(d){return(d.vals[m]||0)!==0;});
   var rows=items.map(function(item){
     var v=item.vals[m]||0;
     return '<div class="ir" onclick="openModal(\''+(isRec?'receita':'despesa')+'\',\''+item.id+'\')"><div class="ir-l"><div class="ir-ic '+(isRec?'g':getIcoBg(item.tipo))+'">'+getIco(item.nome)+'</div>'
