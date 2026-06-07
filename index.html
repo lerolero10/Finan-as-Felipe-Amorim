@@ -448,6 +448,25 @@ function ensureBaseUsers(){
   if(changed)saveUsers(users);
 }
 
+// Garante que itens deletados acidentalmente sejam restaurados
+function ensureMissingItems(){
+  if(!CU||!DB)return;
+  var changed=false;
+
+  if(CU==='felipe'){
+    // Restaurar Lazer + Compras se não existir
+    var temLazer=DB.despesas.find(function(d){return d.nome==='Lazer + Compras';});
+    if(!temLazer){
+      DB.despesas.push({id:uid(),ciclo:5,nome:'Lazer + Compras',tipo:'variavel',
+        vals:[0,500,1860,0,0,1000,1000,1000,1000,1000,1000,1000],
+        parc:null,pag:'cc',cid:null});
+      changed=true;
+    }
+  }
+
+  if(changed)saveDB();
+}
+
 function buildUserList(){
   var users=getUsers();
   document.getElementById('us-list').innerHTML=users.map(function(u){
@@ -464,6 +483,7 @@ function buildUserList(){
 function selectUser(uid){
   CU=uid;CA=TODAY.getFullYear();
   DB=loadDB(CU,CA);
+  ensureMissingItems();
   saveMeta({CU:CU,CA:CA});
   var us=document.getElementById('user-select');
   us.style.opacity='0';us.style.pointerEvents='none';
@@ -1177,6 +1197,7 @@ window.addEventListener('load',function(){
   var meta=getMeta();
   if(meta.CU&&meta.CA){
     CU=meta.CU;CA=meta.CA;DB=loadDB(CU,CA);
+    ensureMissingItems();
     document.getElementById('user-select').style.opacity='0';
     document.getElementById('user-select').style.pointerEvents='none';
     render();
