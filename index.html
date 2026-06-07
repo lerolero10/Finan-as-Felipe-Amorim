@@ -691,7 +691,7 @@ function cicloCard(ciclo,lbl,icon,dotcls,rec,desp,bal,pct,itens,m,ant){
   var fatRows=fatRowsCiclo(ciclo,m);
   var pc=pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)';
   var rows=itens.map(function(d){
-    return '<div class="ir" onclick="openModal(\'despesa\',\''+d.id+'\')"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic '+getIcoBg(d.tipo)+'">'+getIco(d.nome)+'</div><button class="ir-del" onclick="event.stopPropagation();delItem(\'d\',\''+d.id+'\')" >✕</button></div>'
+    return '<div class="ir" onclick="openModal(\'despesa\',\''+d.id+'\')"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic '+getIcoBg(d.tipo)+'">'+getIco(d.nome)+'</div><button class="ir-del" onclick="event.stopPropagation();delItem(\'d\',\''+d.id+'\','+m+')" >✕</button></div>'
       +'<div class="ir-tx"><div class="ir-nm">'+d.nome+'</div>'
       +'<div class="ir-mt">'+tagH(d)+' <span class="pt">'+pagLbl(d.pag,d.cid)+'</span></div></div></div>'
       +'<div class="ir-r"><div class="ir-vl">'+fmt(d.vals[m]||0)+'</div></div></div>';
@@ -733,12 +733,12 @@ function bldCiclo(ciclo,elId){
   var lbl=ciclo===5?'5º Dia Útil':'Dia 20';
   var pc=pct<70?'rgba(168,240,192,.8)':pct<90?'rgba(255,200,100,.8)':'rgba(255,150,150,.8)';
   var rRows=DB.receitas.filter(function(r){return r.ciclo===ciclo&&r.nome!=='Saldo Anterior'&&(r.vals[m]||0)!==0;}).map(function(r){
-    return '<div class="ir" onclick="openModal(\'receita\',\''+r.id+'\')"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic g">'+getIco(r.nome)+'</div><button class="ir-del" onclick="event.stopPropagation();delItem(\'r\',\''+r.id+'\')" >✕</button></div>'
+    return '<div class="ir" onclick="openModal(\'receita\',\''+r.id+'\')"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic g">'+getIco(r.nome)+'</div><button class="ir-del" onclick="event.stopPropagation();delItem(\'r\',\''+r.id+'\','+m+')" >✕</button></div>'
       +'<div class="ir-tx"><div class="ir-nm">'+r.nome+'</div><div class="ir-mt">'+tagH(r)+'</div></div></div>'
       +'<div class="ir-r"><div class="ir-vl '+((r.vals[m]||0)===0?'z':'')+'">'+fmt(r.vals[m]||0)+'</div></div></div>';
   }).join('');
   var dRows=DB.despesas.filter(function(d){return d.ciclo===ciclo&&(d.vals[m]||0)!==0;}).map(function(d){
-    return '<div class="ir" onclick="openModal(\'despesa\',\''+d.id+'\')"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic '+getIcoBg(d.tipo)+'">'+getIco(d.nome)+'</div><button class="ir-del" onclick="event.stopPropagation();delItem(\'d\',\''+d.id+'\')" >✕</button></div>'
+    return '<div class="ir" onclick="openModal(\'despesa\',\''+d.id+'\')"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic '+getIcoBg(d.tipo)+'">'+getIco(d.nome)+'</div><button class="ir-del" onclick="event.stopPropagation();delItem(\'d\',\''+d.id+'\','+m+')" >✕</button></div>'
       +'<div class="ir-tx"><div class="ir-nm">'+d.nome+'</div>'
       +'<div class="ir-mt">'+tagH(d)+' <span class="pt">'+pagLbl(d.pag,d.cid)+'</span></div></div></div>'
       +'<div class="ir-r"><div class="ir-vl '+((d.vals[m]||0)===0?'z':'')+'">'+fmt(d.vals[m]||0)+'</div></div></div>';
@@ -1084,7 +1084,7 @@ function buildEdit(item,isD){
     +'</div></div>'
     +'<button class="btn-p" onclick="saveEdit(\''+item.id+'\',\''+(isD?'d':'r')+'\')">Salvar</button>'
     +'<button class="btn-s" onclick="closeSheet()">Cancelar</button>'
-    +'<button class="btn-d" onclick="delItem(\''+(isD?'d':'r')+'\',\''+item.id+'\')">Excluir</button>';
+    +'<button class="btn-d" onclick="delItem(\''+(isD?'d':'r')+'\',\''+item.id+'\',M)">Excluir</button>';
   document.getElementById('sh-bd').innerHTML=h;
 }
 function uTipoE(){
@@ -1107,13 +1107,45 @@ function saveEdit(id,arr){
   for(var i=0;i<12;i++){var el=document.getElementById('mv'+i);if(el)item.vals[i]=parseFloat(el.value)||0;}
   saveDB();closeSheet();render();toast('"'+item.nome+'" atualizado ✓');
 }
-function delItem(arr,id){
+function delItem(arr,id,mes){
   var list=arr==='d'?DB.despesas:DB.receitas;
   var item=list.find(function(x){return x.id===id;});
-  if(!item||!confirm('Excluir "'+item.nome+'"?'))return;
-  if(arr==='d')DB.despesas=DB.despesas.filter(function(x){return x.id!==id;});
-  else DB.receitas=DB.receitas.filter(function(x){return x.id!==id;});
-  saveDB();closeSheet();render();toast('Removido');
+  if(!item)return;
+
+  // mes = mês específico clicado (para excluir só aquele evento)
+  // Se não vier mes, usa M (mês atual)
+  var m=(mes!==undefined&&mes!==null)?mes:M;
+
+  // Verificar se tem mais de um mês com valor
+  var mesesComValor=item.vals.filter(function(v){return v!==0;}).length;
+
+  if(mesesComValor<=1){
+    // Só tem 1 mês — excluir o item inteiro
+    if(!confirm('Excluir "'+item.nome+'"?'))return;
+    if(arr==='d')DB.despesas=DB.despesas.filter(function(x){return x.id!==id;});
+    else DB.receitas=DB.receitas.filter(function(x){return x.id!==id;});
+    saveDB();closeSheet();render();toast('Removido');
+    return;
+  }
+
+  // Tem múltiplos meses — perguntar
+  var resp=confirm(
+    'Excluir "'+item.nome+'" em '+MS[m]+'?\n\n'
+    +'OK = Excluir só '+MS3[m]+'\n'
+    +'Cancelar = Excluir a série inteira'
+  );
+
+  if(resp){
+    // Excluir só este mês
+    item.vals[m]=0;
+    saveDB();closeSheet();render();toast(MS3[m]+' zerado');
+  } else {
+    // Excluir série inteira — confirmar novamente
+    if(!confirm('Excluir a série inteira de "'+item.nome+'"? Isso removerá todos os meses.'))return;
+    if(arr==='d')DB.despesas=DB.despesas.filter(function(x){return x.id!==id;});
+    else DB.receitas=DB.receitas.filter(function(x){return x.id!==id;});
+    saveDB();closeSheet();render();toast('Série removida');
+  }
 }
 function openDetalhe(tipo,m){
   var isRec=tipo==='rec';
@@ -1121,7 +1153,7 @@ function openDetalhe(tipo,m){
   var items=isRec?DB.receitas.filter(function(r){return r.nome!=='Saldo Anterior'&&(r.vals[m]||0)!==0;}):DB.despesas.filter(function(d){return(d.vals[m]||0)!==0;});
   var rows=items.map(function(item){
     var v=item.vals[m]||0;
-    return '<div class="ir" onclick="openModal(\''+(isRec?'receita':'despesa')+'\',\''+item.id+'\')"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic '+(isRec?'g':getIcoBg(item.tipo))+'">'+getIco(item.nome)+'</div><button class="ir-del" onclick="event.stopPropagation();delItem(\''+(!isRec?'d':'r')+'\',\''+item.id+'\')" >✕</button></div>'
+    return '<div class="ir" onclick="openModal(\''+(isRec?'receita':'despesa')+'\',\''+item.id+'\')"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic '+(isRec?'g':getIcoBg(item.tipo))+'">'+getIco(item.nome)+'</div><button class="ir-del" onclick="event.stopPropagation();delItem(\''+(!isRec?'d':'r')+'\',\''+item.id+'\','+m+')" >✕</button></div>'
       +'<div class="ir-tx"><div class="ir-nm">'+item.nome+'</div></div></div>'
       +'<div class="ir-r"><div class="ir-vl '+(v===0?'z':'')+'">'+fmt(v)+'</div></div></div>';
   }).join('');
