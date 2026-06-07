@@ -550,21 +550,21 @@ function rHome(){
 
   // Ciclo 5
   var sec3=document.createElement('div');
-  var sh3=document.createElement('div');sh3.className='sh';
-  var st3=document.createElement('div');st3.className='st';st3.textContent='5\u00ba Dia \u00datil';
-  var sa3=document.createElement('button');sa3.className='sa';sa3.textContent='Ver tudo \u2192';sa3.onclick=function(){goPg('pg-c5',document.getElementById('n-c5'));};
-  sh3.appendChild(st3);sh3.appendChild(sa3);sec3.appendChild(sh3);
-  sec3.innerHTML+=cicloCard(5,'5\u00ba Dia \u00datil','📅','g',r5,d5,b5,p5,d5top,m);
+  sec3.innerHTML='<div class="sh"><div class="st">5\u00ba Dia \u00datil</div><button class="sa" id="ver-c5">Ver tudo \u2192</button></div>'+cicloCard(5,'5\u00ba Dia \u00datil','📅','g',r5,d5,b5,p5,d5top,m);
   hc.appendChild(sec3);
+  document.getElementById('ver-c5').onclick=function(){goPg('pg-c5',document.getElementById('n-c5'));};
+  attachIrEvents(d5top,true,m);
 
   // Ciclo 20
   var sec4=document.createElement('div');
-  var sh4=document.createElement('div');sh4.className='sh';
-  var st4=document.createElement('div');st4.className='st';st4.textContent='Dia 20';
-  var sa4=document.createElement('button');sa4.className='sa';sa4.textContent='Ver tudo \u2192';sa4.onclick=function(){goPg('pg-c20',document.getElementById('n-c20'));};
-  sh4.appendChild(st4);sh4.appendChild(sa4);sec4.appendChild(sh4);
-  sec4.innerHTML+=cicloCard(20,'Dia 20','📆','gr',r20,d20,b20,p20,d20top,m);
+  sec4.innerHTML='<div class="sh"><div class="st">Dia 20</div><button class="sa" id="ver-c20">Ver tudo \u2192</button></div>'+cicloCard(20,'Dia 20','📆','gr',r20,d20,b20,p20,d20top,m);
   hc.appendChild(sec4);
+  document.getElementById('ver-c20').onclick=function(){goPg('pg-c20',document.getElementById('n-c20'));};
+  attachIrEvents(d20top,true,m);
+
+  // Attach add buttons for ciclo cards
+  var a5=document.getElementById('add-5');if(a5)a5.onclick=function(){openModal('despesa',null,5);};
+  var a20=document.getElementById('add-20');if(a20)a20.onclick=function(){openModal('despesa',null,20);};
 
   // Faturas
   if(DB.cartoes.length>0){
