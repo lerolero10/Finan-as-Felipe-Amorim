@@ -569,12 +569,16 @@ function rHome(){
   // Faturas
   if(DB.cartoes.length>0){
     var sec5=document.createElement('div');
-    var sh5=document.createElement('div');sh5.className='sh';
-    var st5=document.createElement('div');st5.className='st';st5.textContent='Faturas';
-    var sa5=document.createElement('button');sa5.className='sa';sa5.textContent='Ver \u2192';sa5.onclick=function(){goPg('pg-cards',document.getElementById('n-cards'));};
-    sh5.appendChild(st5);sh5.appendChild(sa5);sec5.appendChild(sh5);
-    sec5.innerHTML+=fatResumoHome(m);
+    sec5.innerHTML='<div class="sh"><div class="st">Faturas</div><button class="sa" id="ver-cards">Ver \u2192</button></div>'+fatResumoHome(m);
     hc.appendChild(sec5);
+    var vc=document.getElementById('ver-cards');
+    if(vc)vc.onclick=function(){goPg('pg-cards',document.getElementById('n-cards'));};
+    DB.cartoes.forEach(function(c){
+      var frhdr=document.getElementById('frhdr-'+c.id);
+      if(frhdr)frhdr.onclick=function(){goPg('pg-cards',document.getElementById('n-cards'));};
+      var fradd=document.getElementById('fradd-'+c.id);
+      if(fradd)fradd.onclick=(function(cid){return function(){openAddFatura(cid,m);};})(c.id);
+    });
   }
 }
 
@@ -603,7 +607,7 @@ function cicloCard(ciclo,lbl,icon,dotcls,rec,desp,bal,pct,itens,m){
   var fatRows=fatRowsCiclo(ciclo,m);
   var pc=pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)';
   var rows=itens.map(function(d){return irRow(d,true,m);}).join('');
-  var fatHtml=fatRows.map(function(f){return '<div class="ir"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic b">💳</div></div><div class="ir-tx"><div class="ir-nm">'+f.nome+'</div><div class="ir-mt"><span class="pt">💳 '+lbl+'</span></div></div></div><div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';}).join('');
+  var fatHtml=fatRows.map(function(f,fi){return '<div class="ir" id="fr-'+ciclo+'-'+fi+'"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic b">💳</div></div><div class="ir-tx"><div class="ir-nm">'+f.nome+'</div><div class="ir-mt"><span class="pt">💳 '+lbl+'</span></div></div></div><div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';}).join('');
   var html='<div class="cc"><div class="cc-head"><div class="cc-info"><div class="cc-dot '+dotcls+'">'+icon+'</div><div><div class="cc-name">'+lbl+'</div><div class="cc-date">Rec: '+fmt(rec,false)+'</div></div></div><div class="cc-bal"><div class="cc-bv '+(bal>=0?'g':'r')+'">'+fmt(bal,false)+'</div><div class="cc-bl">Balan\u00e7o</div></div></div><div class="cc-bar"><div class="cc-barf" style="width:'+pct+'%;background:'+pc+'"></div></div>'+rows+fatHtml+(!rows&&!fatHtml?'<div class="empty">Sem despesas</div>':'')+'<div class="add-row" id="add-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar despesa</div></div></div>';
   return html;
 }
@@ -630,7 +634,7 @@ function bldCiclo(ciclo,elId){
   var fatRows=fatRowsCiclo(ciclo,m);
   var rRows=recs.map(function(r){return irRow(r,false,m);}).join('');
   var dRows=desps.map(function(d){return irRow(d,true,m);}).join('');
-  var fatHtml=fatRows.map(function(f){return '<div class="ir"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic b">💳</div></div><div class="ir-tx"><div class="ir-nm">'+f.nome+'</div><div class="ir-mt"><span class="pt">💳 '+lbl+'</span></div></div></div><div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';}).join('');
+  var fatHtml=fatRows.map(function(f,fi){return '<div class="ir" id="fr-'+ciclo+'-'+fi+'"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic b">💳</div></div><div class="ir-tx"><div class="ir-nm">'+f.nome+'</div><div class="ir-mt"><span class="pt">💳 '+lbl+'</span></div></div></div><div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';}).join('');
   var el=document.getElementById(elId);
   el.innerHTML='<div style="background:linear-gradient(160deg,var(--g1),var(--g2));padding:max(14px,var(--st)) 18px 0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div style="display:flex;align-items:center;gap:9px"><button id="bk-'+ciclo+'" style="background:rgba(255,255,255,.18);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:16px;cursor:pointer">‹</button><span style="font-size:14px;font-weight:900;color:#fff">'+lbl+'</span></div><div class="mnav"><button class="mnb" id="pm-'+ciclo+'">‹</button><span>'+MS3[m]+' '+String(CA).slice(2)+'</span><button class="mnb" id="nm-'+ciclo+'">›</button></div></div><div style="background:rgba(255,255,255,.12);border-radius:13px;padding:13px;margin-bottom:13px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center"><div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Receitas</div><div style="font-size:13px;font-weight:900;color:#fff">'+fmt(rec,false)+'</div></div><div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Despesas</div><div style="font-size:13px;font-weight:900;color:#fff">'+fmt(desp,false)+'</div></div><div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Balan\u00e7o</div><div style="font-size:13px;font-weight:900;color:'+(bal>=0?'#a8f0c0':'#ffb3b3')+'">'+fmt(bal,false)+'</div></div></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:11px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+pc+';border-radius:2px"></div></div></div></div><div class="cnt"><div><div class="sh"><div class="st">Receitas</div></div><div class="cc">'+(rRows||'<div class="empty">Sem receitas</div>')+'<div class="add-row" id="addr-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar receita</div></div></div></div><div><div class="sh"><div class="st">Despesas</div></div><div class="cc">'+dRows+fatHtml+(!dRows&&!fatHtml?'<div class="empty">Sem despesas</div>':'')+'<div class="add-row" id="addd-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar despesa</div></div></div></div></div>';
   // Attach events
@@ -801,14 +805,16 @@ window.addEventListener('load',function(){
 var _origRender=render;
 render=function(){
   _origRender();
-  // Attach cicloCard add buttons
+  // Attach fatura row clicks (go to cards page)
+  if(!DB||!DB.cartoes)return;
   [5,20].forEach(function(c){
-    var ab=document.getElementById('add-'+c);if(ab)ab.onclick=function(){openModal('despesa',null,c);};
-    // fatResumoHome add buttons
-    DB.cartoes.forEach(function(ct){
-      var fr=document.getElementById('fradd-'+ct.id);if(fr)fr.onclick=(function(cid){return function(){openAddFatura(cid,M);};})(ct.id);
-      var frhdr=document.getElementById('frhdr-'+ct.id);if(frhdr)frhdr.onclick=function(){goPg('pg-cards',document.getElementById('n-cards'));};
+    var fatRows=fatRowsCiclo(c,M);
+    fatRows.forEach(function(_,fi){
+      var el=document.getElementById('fr-'+c+'-'+fi);
+      if(el)el.onclick=function(){goPg('pg-cards',document.getElementById('n-cards'));};
     });
+    var ab=document.getElementById('add-'+c);
+    if(ab)(function(cc){ab.onclick=function(){openModal('despesa',null,cc);};})(c);
   });
 };
 
