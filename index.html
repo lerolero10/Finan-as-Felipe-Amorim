@@ -859,18 +859,45 @@ function rCards(){
     html+='<div class="empty" style="padding:40px">Nenhum cartão cadastrado</div>';
   } else {
     DB.cartoes.forEach(function(c){
-      var items=(DB.faturas[c.id]||{})[m]||[];
-      var tot=items.reduce(function(s,i){return s+i.val;},0);
+      // Itens da fatura manual (lançados pelo app)
+      var fatItems=(DB.faturas[c.id]||{})[m]||[];
+      var fatTot=fatItems.reduce(function(s,i){return s+i.val;},0);
+      // Despesas normais vinculadas a este cartão no mês
+      var despItems=DB.despesas.filter(function(d){return d.cid===c.id&&(d.vals[m]||0)!==0;});
+      var despTot=despItems.reduce(function(s,d){return s+(d.vals[m]||0);},0);
+      var tot=fatTot+despTot;
       var pct=c.limite>0?Math.min(tot/c.limite*100,100):0;
       var vLbl=(c.vencimento||5)===20?'Dia 20':'5º Dia Útil';
-      var iRows=items.length===0?'<div class="empty">Sem lançamentos</div>'
-        :items.map(function(i){
-          return '<div class="fat-item"><div class="fi-l"><div class="fi-ic">'+getIco(i.nome)+'</div>'
-            +'<div><div class="fi-nm">'+i.nome+'</div>'
-            +'<div class="fi-mt">'+(i.parc?i.parc+' parc.':'')+'</div></div></div>'
-            +'<div class="fi-vl">'+fmt(i.val)+'</div></div>';
-        }).join('');
       var barf=pct<70?'rgba(168,240,192,.8)':pct<80?'rgba(255,220,100,.8)':'rgba(255,120,120,.8)';
+
+      // Render despesas normais vinculadas (editáveis)
+      var despHtml=despItems.map(function(d){
+        return '<div class="fat-item" id="di-'+d.id+'">'
+          +'<div class="fi-l">'
+          +'<div style="position:relative;flex-shrink:0">'
+          +'<div class="fi-ic">'+getIco(d.nome)+'</div>'
+          +'<button id="xd-'+d.id+'" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--rd);border:2px solid #fff;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;line-height:1">✕</button>'
+          +'</div>'
+          +'<div><div class="fi-nm">'+d.nome+'</div>'
+          +'<div class="fi-mt">'+tagH(d)+'</div></div></div>'
+          +'<div class="fi-vl">'+fmt(d.vals[m]||0)+'</div></div>';
+      }).join('');
+
+      // Render itens de fatura manual (com X)
+      var fatHtml=fatItems.map(function(i){
+        return '<div class="fat-item" id="fi-'+i.id+'">'
+          +'<div class="fi-l">'
+          +'<div style="position:relative;flex-shrink:0">'
+          +'<div class="fi-ic">'+getIco(i.nome)+'</div>'
+          +'<button id="xf-'+i.id+'" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--rd);border:2px solid #fff;color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;line-height:1">✕</button>'
+          +'</div>'
+          +'<div><div class="fi-nm">'+i.nome+'</div>'
+          +'<div class="fi-mt">'+(i.parc?i.parc+' parc.':'Lançamento manual')+'</div></div></div>'
+          +'<div class="fi-vl">'+fmt(i.val)+'</div></div>';
+      }).join('');
+
+      var allEmpty=despItems.length===0&&fatItems.length===0;
+
       html+='<div class="fat-card" id="fc-'+c.id+'">'
         +'<div class="fat-hdr" id="fh-'+c.id+'">'
         +'<div class="fat-hdr-top"><div>'
@@ -879,12 +906,12 @@ function rCards(){
         +'</div><button id="del-c-'+c.id+'" style="background:rgba(255,77,77,.2);border:none;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:12px;color:#ffb3b3">✕</button></div>'
         +'<div class="fat-lbl">Fatura '+MS3[m]+'/'+CA+' · Limite '+fmt(c.limite,false)+'</div>'
         +'<div class="fat-val">'+fmt(tot,false)+'</div>'
-        +'<div class="fat-chips"><div class="fat-chip">'+items.length+' lanç.</div>'
+        +'<div class="fat-chips"><div class="fat-chip">'+(despItems.length+fatItems.length)+' lanç.</div>'
         +'<div class="fat-chip'+(pct>80?' r':'')+'">'+pct.toFixed(0)+'% limite</div></div>'
         +'<div class="fat-bar"><div class="fat-barf" style="width:'+pct.toFixed(1)+'%;background:'+barf+'"></div></div>'
         +'</div>'
         +'<div id="fat-'+c.id+'">'
-        +iRows
+        +(allEmpty?'<div class="empty">Sem lançamentos</div>':despHtml+fatHtml)
         +(tot>0?'<div class="fat-tot"><div class="ft-lb">Total · '+vLbl+'</div><div class="ft-vl">'+fmt(tot,false)+'</div></div>':'')
         +'<div class="add-row" id="btn-fat-'+c.id+'">'
         +'<div class="add-ic">+</div><div class="add-lb">Lançar na fatura</div></div>'
@@ -907,6 +934,28 @@ function rCards(){
     if(delBtn)delBtn.onclick=function(e){e.stopPropagation();delCartao(c.id);};
     var addBtn=document.getElementById('btn-fat-'+c.id);
     if(addBtn)addBtn.onclick=function(){openAddFatura(c.id,m);};
+
+    // X buttons for despesas vinculadas ao cartão
+    var despItems=DB.despesas.filter(function(d){return d.cid===c.id&&(d.vals[m]||0)!==0;});
+    despItems.forEach(function(d){
+      var xd=document.getElementById('xd-'+d.id);
+      if(xd)xd.onclick=function(e){e.stopPropagation();delItem('d',d.id,m);};
+      // click on the item row opens edit modal
+      var row=document.getElementById('di-'+d.id);
+      if(row)row.onclick=function(){openModal('despesa',d.id);};
+    });
+
+    // X buttons for itens de fatura manual
+    var fatItems=(DB.faturas[c.id]||{})[m]||[];
+    fatItems.forEach(function(i){
+      var xf=document.getElementById('xf-'+i.id);
+      if(xf)xf.onclick=function(e){
+        e.stopPropagation();
+        if(!confirm('Remover "'+i.nome+'" da fatura?'))return;
+        DB.faturas[c.id][m]=DB.faturas[c.id][m].filter(function(x){return x.id!==i.id;});
+        saveDB();render();toast('Removido');
+      };
+    });
   });
 }
 
