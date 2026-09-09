@@ -517,8 +517,12 @@ function rHome(){
   if(fTot>0)pills.appendChild(mkpill('r','💳 '+fmt(fTot,false)));
   bsec.appendChild(blbl);bsec.appendChild(brow);bsec.appendChild(pills);hdr.appendChild(bsec);
 
-  // Annual card
-  var tR2=0,tD2=0;for(var i=0;i<12;i++){tR2+=recMes(i);tD2+=despMes(i);}
+  // Annual card - receitas reais (sem saldo anterior) vs despesas
+  var tR2=0,tD2=0;
+  for(var i=0;i<12;i++){
+    tR2+=sR(5,i)+sR(20,i);        // only real income, no saldo anterior
+    tD2+=sD(5,i)+fatCiclo(5,i)+sD(20,i)+fatCiclo(20,i);
+  }
   var sA=tR2-tD2,pA=tR2>0?Math.min(tD2/tR2*100,100):0;
 
   var d5=sD(5,m)+fat5,d20=sD(20,m)+fat20,r5=sR(5,m),r20=sR(20,m);
@@ -552,15 +556,15 @@ function rHome(){
   var sec3=document.createElement('div');
   sec3.innerHTML='<div class="sh"><div class="st">5\u00ba Dia \u00datil</div><button class="sa" id="ver-c5">Ver tudo \u2192</button></div>'+cicloCard(5,'5\u00ba Dia \u00datil','📅','g',r5,d5,b5,p5,d5top,m);
   hc.appendChild(sec3);
+  delegateIr(sec3);
   document.getElementById('ver-c5').onclick=function(){goPg('pg-c5',document.getElementById('n-c5'));};
-  attachIrEvents(d5top,true,m);
 
   // Ciclo 20
   var sec4=document.createElement('div');
   sec4.innerHTML='<div class="sh"><div class="st">Dia 20</div><button class="sa" id="ver-c20">Ver tudo \u2192</button></div>'+cicloCard(20,'Dia 20','📆','gr',r20,d20,b20,p20,d20top,m);
   hc.appendChild(sec4);
+  delegateIr(sec4);
   document.getElementById('ver-c20').onclick=function(){goPg('pg-c20',document.getElementById('n-c20'));};
-  attachIrEvents(d20top,true,m);
 
   // Attach add buttons for ciclo cards
   var a5=document.getElementById('add-5');if(a5)a5.onclick=function(){openModal('despesa',null,5);};
@@ -582,22 +586,40 @@ function rHome(){
   }
 }
 
-function irRow(item,isD,m){
-  var arr=isD?'despesa':'receita';
+function irRow(item,isD,m,ctx){
+  // ctx = unique context string to avoid ID collisions across multiple render calls
   var bg=isD?getIcoBg(item.tipo):'g';
   var val=m!==undefined?item.vals[m]||0:item.vals[M]||0;
-  var delArr=isD?'d':'r';
-  var mVal=m!==undefined?m:M;
-  var wrap='<div class="ir-ic-wrap"><div class="ir-ic '+bg+'">'+getIco(item.nome)+'</div><button class="ir-del" id="del-'+item.id+'">✕</button></div>';
   var pLbl=isD?' <span class="pt">'+pagLbl(item.pag,item.cid)+'</span>':'';
-  return '<div class="ir" id="row-'+item.id+'"><div class="ir-l">'+wrap+'<div class="ir-tx"><div class="ir-nm">'+item.nome+'</div><div class="ir-mt">'+tagH(item)+pLbl+'</div></div></div><div class="ir-r"><div class="ir-vl '+(val===0?'z':'')+'">'+fmt(val)+'</div></div></div>';
+  var uid2=ctx?ctx+'-'+item.id:item.id;
+  var wrap='<div class="ir-ic-wrap"><div class="ir-ic '+bg+'">'+getIco(item.nome)+'</div>'
+    +'<button class="ir-del" data-iid="'+item.id+'" data-arr="'+(isD?'d':'r')+'" data-m="'+(m!==undefined?m:M)+'">✕</button></div>';
+  var pLbl2=isD?' <span class="pt">'+pagLbl(item.pag,item.cid)+'</span>':'';
+  return '<div class="ir" data-iid="'+item.id+'" data-type="'+(isD?'despesa':'receita')+'">'
+    +'<div class="ir-l">'+wrap
+    +'<div class="ir-tx"><div class="ir-nm">'+item.nome+'</div>'
+    +'<div class="ir-mt">'+tagH(item)+pLbl2+'</div></div></div>'
+    +'<div class="ir-r"><div class="ir-vl '+(val===0?'z':'')+'">'+fmt(val)+'</div></div></div>';
 }
 function attachIrEvents(items,isD,m){
-  items.forEach(function(item){
-    var row=document.getElementById('row-'+item.id);
-    if(row)row.onclick=function(){openModal(isD?'despesa':'receita',item.id);};
-    var btn=document.getElementById('del-'+item.id);
-    if(btn)btn.onclick=function(e){e.stopPropagation();delItem(isD?'d':'r',item.id,m!==undefined?m:M);};
+  // No-op: events attached via event delegation on container
+}
+function delegateIr(container){
+  if(!container||container._irDelegated)return;
+  container._irDelegated=true;
+  container.addEventListener('click',function(e){
+    // Click on del button
+    var del=e.target.closest('.ir-del');
+    if(del){
+      e.stopPropagation();
+      var iid=del.dataset.iid,arr=del.dataset.arr,mVal=parseInt(del.dataset.m);
+      delItem(arr,iid,mVal);return;
+    }
+    // Click on row
+    var row=e.target.closest('.ir[data-iid]');
+    if(row){
+      openModal(row.dataset.type,row.dataset.iid);
+    }
   });
 }
 function fatRowsCiclo(ciclo,m){
@@ -643,12 +665,12 @@ function bldCiclo(ciclo,elId){
   var nm=document.getElementById('nm-'+ciclo);if(nm)nm.onclick=function(){chM(1);};
   var addr=document.getElementById('addr-'+ciclo);if(addr)addr.onclick=function(){openModal('receita',null,ciclo);};
   var addd=document.getElementById('addd-'+ciclo);if(addd)addd.onclick=function(){openModal('despesa',null,ciclo);};
-  attachIrEvents(recs,false,m);attachIrEvents(desps,true,m);
+  delegateIr(document.getElementById(elId));
 }
 function rAnual(){
   var H='<thead><tr><th>Item</th>'+MS3.map(function(m){return '<th>'+m+'</th>';}).join('')+'<th>TOTAL</th></tr></thead>';
   function row(lbl,arr,cls){var tot=arr.reduce(function(s,v){return s+v;},0);return '<tr class="'+(cls||'')+'"><td>'+lbl+'</td>'+arr.map(function(v){return '<td class="'+(v<0?'rv':v===0?'zv':'')+'">'+fmt(v)+'</td>';}).join('')+'<td class="'+(tot<0?'rv':tot>0?'pv':'')+'">'+fmt(tot,false)+'</td></tr>';}
-  var tRa=MS.map(function(_,i){return recMes(i);}),tDa=MS.map(function(_,i){return despMes(i);});
+  var tRa=MS.map(function(_,i){return sR(5,i)+sR(20,i);}),tDa=MS.map(function(_,i){return despMes(i);});
   var bal=MS.map(function(_,i){return balMes(i);});
   var dRows=DB.despesas.map(function(d){var tot=d.vals.reduce(function(s,v){return s+v;},0);if(tot===0)return '';return '<tr><td>'+tagH(d)+' '+d.nome+'</td>'+d.vals.map(function(v){return '<td class="'+(v===0?'zv':'')+'">'+fmt(v)+'</td>';}).join('')+'<td class="pv">'+fmt(tot,false)+'</td></tr>';}).join('');
   var el=document.getElementById('anual-c');
@@ -787,7 +809,7 @@ function openDetalhe(tipo,m){
   var bd=document.getElementById('sh-bd');
   bd.innerHTML='<div style="background:'+(isRec?'var(--gl)':'var(--rdl)')+';border-radius:10px;padding:12px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:11px;font-weight:800;color:'+(isRec?'var(--g1)':'var(--rd)')+'">TOTAL</div><div style="font-size:18px;font-weight:900;color:'+(isRec?'var(--g1)':'var(--rd)')+'">'+fmt(total,false)+'</div></div>'+items.map(function(item){return irRow(item,!isRec,m);}).join('')+'<div style="margin-top:12px"><button class="btn-p" id="btn-new-det">+ Novo</button><button class="btn-s" onclick="closeSheet()">Fechar</button></div>';
   document.getElementById('overlay').classList.add('open');
-  attachIrEvents(items,!isRec,m);
+  delegateIr(document.getElementById('sh-bd'));
   var bn=document.getElementById('btn-new-det');if(bn)bn.onclick=function(){closeSheet();openModal(isRec?'receita':'despesa',null,null);};
 }
 function closeSheet(){document.getElementById('overlay').classList.remove('open');}
