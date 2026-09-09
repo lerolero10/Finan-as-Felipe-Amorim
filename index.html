@@ -481,41 +481,46 @@ function render(){autoSaldo();rHome();rC5();rC20();rAnual();rCards();}
 function rHome(){
   var m=M,ant=antVal(m),rec=recMes(m),desp=despMes(m),bal=ant+rec-desp;
   var fat5=fatCiclo(5,m),fat20=fatCiclo(20,m),fTot=fat5+fat20;
-  var pct=rec>0?Math.min(desp/rec*100,100):0;
+  var pct=(rec+ant)>0?Math.min(desp/(rec+ant)*100,100):0;
   var nm=CU==='raquel'?'Raquel':'Felipe A.',ini=CU==='raquel'?'R':'FA';
-  var anoLbl=DB.nomeAno?CA+' \u00b7 '+DB.nomeAno:String(CA);
+  var anoLbl=DB.nomeAno?CA+' · '+DB.nomeAno:String(CA);
+  var corBal=bal>=0?'#a8f0c0':'#ffb3b3';
+  var corBar=pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)';
+
   // Header
   var hdr=document.getElementById('hdr');
-  hdr.innerHTML='';
-  var top=document.createElement('div');top.className='hdr-top';
-  var usr=document.createElement('div');usr.className='hdr-user';
-  var av=document.createElement('div');av.className='av';av.textContent=ini;
-  var uinfo=document.createElement('div');
-  var uname=document.createElement('div');uname.className='hdr-name';uname.textContent=nm;
-  var usub=document.createElement('div');usub.className='hdr-sub';usub.textContent=anoLbl;
-  uinfo.appendChild(uname);uinfo.appendChild(usub);usr.appendChild(av);usr.appendChild(uinfo);
-  var right=document.createElement('div');right.className='hdr-right';
-  var tbtn=document.createElement('button');tbtn.className='hdr-btn';tbtn.textContent='Trocar';tbtn.onclick=logout;
-  var mnav=document.createElement('div');mnav.className='mnav';
-  var pb=document.createElement('button');pb.className='mnb';pb.textContent='‹';pb.onclick=function(){chM(-1);};
-  var ms=document.createElement('span');ms.textContent=MS3[m];
-  var nb=document.createElement('button');nb.className='mnb';nb.textContent='›';nb.onclick=function(){chM(1);};
-  mnav.appendChild(pb);mnav.appendChild(ms);mnav.appendChild(nb);
-  right.appendChild(tbtn);right.appendChild(mnav);top.appendChild(usr);top.appendChild(right);hdr.appendChild(top);
-  // Bal section
-  var bsec=document.createElement('div');bsec.className='bal-sec';
-  var blbl=document.createElement('div');blbl.className='bal-lbl';blbl.textContent='Saldo do mês';
-  var brow=document.createElement('div');brow.className='bal-row';
-  var bval=document.createElement('div');bval.className='bal-val';bval.textContent=HB?'R$ \u2022\u2022\u2022\u2022\u2022\u2022':fmt(bal,false);
-  var eye=document.createElement('button');eye.className='eye-btn';eye.textContent=HB?'👁️':'🙈';eye.onclick=function(){HB=!HB;render();};
-  brow.appendChild(bval);brow.appendChild(eye);
-  var pills=document.createElement('div');pills.className='pills';
-  function mkpill(cls,txt){var p=document.createElement('div');p.className='pill '+cls;p.textContent=txt;return p;}
-  pills.appendChild(mkpill('g','↑ Rec '+fmt(rec,false)));
-  pills.appendChild(mkpill('r','↓ Desp '+fmt(desp,false)));
-  if(ant!==0)pills.appendChild(mkpill('','Ant '+fmt(ant,false)));
-  if(fTot>0)pills.appendChild(mkpill('r','💳 '+fmt(fTot,false)));
-  bsec.appendChild(blbl);bsec.appendChild(brow);bsec.appendChild(pills);hdr.appendChild(bsec);
+  hdr.innerHTML=
+    '<div class="hdr-top">'
+      +'<div class="hdr-user"><div class="av">'+ini+'</div>'
+      +'<div><div class="hdr-name">'+nm+'</div><div class="hdr-sub">'+anoLbl+'</div></div></div>'
+      +'<div class="hdr-right">'
+        +'<button class="hdr-btn" id="hdr-trocar">Trocar</button>'
+        +'<div class="mnav"><button class="mnb" id="hdr-prev">‹</button>'
+        +'<span>'+MS3[m]+'</span>'
+        +'<button class="mnb" id="hdr-next">›</button></div>'
+      +'</div></div>'
+    +'<div class="bal-sec">'
+      +'<div class="bal-lbl">Balanço geral · '+MS3[m]+'</div>'
+      +'<div class="bal-row">'
+        +'<div class="bal-val" id="hdr-bal">'+(HB?'R$ ••••••':fmt(bal,false))+'</div>'
+        +'<button class="eye-btn" id="hdr-eye">'+(HB?'👁️':'🙈')+'</button>'
+      +'</div>'
+      +'<div style="height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:10px;overflow:hidden">'
+        +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+corBar+';border-radius:2px;transition:width .5s"></div>'
+      +'</div>'
+      +'<div class="pills" style="margin-top:8px">'
+        +'<div class="pill g">↑ '+fmt(rec,false)+'</div>'
+        +'<div class="pill r">↓ '+fmt(desp,false)+'</div>'
+        +(ant!==0?'<div class="pill">→ '+fmt(ant,false)+'</div>':'')
+        +(fTot>0?'<div class="pill r">💳 '+fmt(fTot,false)+'</div>':'')
+      +'</div>'
+    +'</div>';
+
+  // Header events
+  document.getElementById('hdr-trocar').onclick=logout;
+  document.getElementById('hdr-prev').onclick=function(){chM(-1);};
+  document.getElementById('hdr-next').onclick=function(){chM(1);};
+  document.getElementById('hdr-eye').onclick=function(){HB=!HB;render();};
 
   // Annual card - receitas reais (sem saldo anterior) vs despesas
   var tR2=0,tD2=0;
@@ -660,9 +665,11 @@ function bldCiclo(ciclo,elId){
 
   // Update main header with ciclo panorama
   var hdr=document.getElementById('hdr');
-  var nm2=CU==='raquel'?'Raquel':'Felipe A.',ini2=CU==='raquel'?'R':'FA';
-  hdr.innerHTML=''
-    +'<div class="hdr-top">'
+  var ini2=CU==='raquel'?'R':'FA';
+  var corBal2=bal>=0?'#a8f0c0':'#ffb3b3';
+  var corBar2=pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)';
+  hdr.innerHTML=
+    '<div class="hdr-top">'
       +'<div class="hdr-user"><div class="av">'+ini2+'</div>'
       +'<div><div class="hdr-name">'+(ciclo===5?'📅':'📆')+' '+lbl+'</div>'
       +'<div class="hdr-sub">'+MS3[m]+' · '+CA+'</div></div></div>'
@@ -673,18 +680,18 @@ function bldCiclo(ciclo,elId){
         +'<button class="mnb" id="nm2-'+ciclo+'">›</button></div>'
       +'</div></div>'
     +'<div class="bal-sec">'
-      +'<div class="bal-lbl">Balanço do ciclo</div>'
+      +'<div class="bal-lbl">Balanço · '+lbl+' · '+MS3[m]+'</div>'
       +'<div class="bal-row">'
-        +'<div class="bal-val" style="color:'+(bal>=0?'#a8f0c0':'#ffb3b3')+'">'+fmt(bal,false)+'</div>'
+        +'<div class="bal-val" style="color:'+corBal2+'">'+fmt(bal,false)+'</div>'
       +'</div>'
-      +'<div class="pills">'
+      +'<div style="height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:10px;overflow:hidden">'
+        +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+corBar2+';border-radius:2px"></div>'
+      +'</div>'
+      +'<div class="pills" style="margin-top:8px">'
         +'<div class="pill g">↑ '+fmt(rec,false)+'</div>'
         +'<div class="pill r">↓ '+fmt(desp,false)+'</div>'
-        +(ant!==0?'<div class="pill">Ant '+fmt(ant,false)+'</div>':'')
-        +'<div class="pill" style="background:rgba(255,255,255,.15)">'
-          +'<div style="width:'+(pct<100?pct.toFixed(0):'100')+'%;background:'+pc+';height:3px;border-radius:2px;min-width:20px"></div>'
-          +pct.toFixed(0)+'%'
-        +'</div>'
+        +(ant!==0?'<div class="pill">→ '+fmt(ant,false)+'</div>':'')
+        +'<div class="pill">'+pct.toFixed(0)+'% comprometido</div>'
       +'</div>'
     +'</div>';
 
