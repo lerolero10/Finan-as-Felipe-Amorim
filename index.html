@@ -657,15 +657,67 @@ function bldCiclo(ciclo,elId){
   var rRows=recs.map(function(r){return irRow(r,false,m);}).join('');
   var dRows=desps.map(function(d){return irRow(d,true,m);}).join('');
   var fatHtml=fatRows.map(function(f,fi){return '<div class="ir" id="fr-'+ciclo+'-'+fi+'"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic b">💳</div></div><div class="ir-tx"><div class="ir-nm">'+f.nome+'</div><div class="ir-mt"><span class="pt">💳 '+lbl+'</span></div></div></div><div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';}).join('');
+
+  // Update main header with ciclo panorama
+  var hdr=document.getElementById('hdr');
+  var nm2=CU==='raquel'?'Raquel':'Felipe A.',ini2=CU==='raquel'?'R':'FA';
+  hdr.innerHTML=''
+    +'<div class="hdr-top">'
+      +'<div class="hdr-user"><div class="av">'+ini2+'</div>'
+      +'<div><div class="hdr-name">'+(ciclo===5?'📅':'📆')+' '+lbl+'</div>'
+      +'<div class="hdr-sub">'+MS3[m]+' · '+CA+'</div></div></div>'
+      +'<div class="hdr-right">'
+        +'<button class="hdr-btn" id="hbk-'+ciclo+'">← Início</button>'
+        +'<div class="mnav"><button class="mnb" id="pm-'+ciclo+'">‹</button>'
+        +'<span>'+MS3[m]+'</span>'
+        +'<button class="mnb" id="nm2-'+ciclo+'">›</button></div>'
+      +'</div></div>'
+    +'<div class="bal-sec">'
+      +'<div class="bal-lbl">Balanço do ciclo</div>'
+      +'<div class="bal-row">'
+        +'<div class="bal-val" style="color:'+(bal>=0?'#a8f0c0':'#ffb3b3')+'">'+fmt(bal,false)+'</div>'
+      +'</div>'
+      +'<div class="pills">'
+        +'<div class="pill g">↑ '+fmt(rec,false)+'</div>'
+        +'<div class="pill r">↓ '+fmt(desp,false)+'</div>'
+        +(ant!==0?'<div class="pill">Ant '+fmt(ant,false)+'</div>':'')
+        +'<div class="pill" style="background:rgba(255,255,255,.15)">'
+          +'<div style="width:'+(pct<100?pct.toFixed(0):'100')+'%;background:'+pc+';height:3px;border-radius:2px;min-width:20px"></div>'
+          +pct.toFixed(0)+'%'
+        +'</div>'
+      +'</div>'
+    +'</div>';
+
   var el=document.getElementById(elId);
-  el.innerHTML='<div style="background:linear-gradient(160deg,var(--g1),var(--g2));padding:max(14px,var(--st)) 18px 0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px"><div style="display:flex;align-items:center;gap:9px"><button id="bk-'+ciclo+'" style="background:rgba(255,255,255,.18);border:none;border-radius:50%;width:30px;height:30px;color:#fff;font-size:16px;cursor:pointer">‹</button><span style="font-size:14px;font-weight:900;color:#fff">'+lbl+'</span></div><div class="mnav"><button class="mnb" id="pm-'+ciclo+'">‹</button><span>'+MS3[m]+' '+String(CA).slice(2)+'</span><button class="mnb" id="nm-'+ciclo+'">›</button></div></div><div style="background:rgba(255,255,255,.12);border-radius:13px;padding:13px;margin-bottom:13px"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center"><div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Receitas</div><div style="font-size:13px;font-weight:900;color:#fff">'+fmt(rec,false)+'</div></div><div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Despesas</div><div style="font-size:13px;font-weight:900;color:#fff">'+fmt(desp,false)+'</div></div><div><div style="font-size:9px;color:rgba(255,255,255,.55);font-weight:800;text-transform:uppercase;margin-bottom:2px">Balan\u00e7o</div><div style="font-size:13px;font-weight:900;color:'+(bal>=0?'#a8f0c0':'#ffb3b3')+'">'+fmt(bal,false)+'</div></div></div><div style="height:3px;background:rgba(255,255,255,.18);border-radius:2px;margin-top:11px;overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+pc+';border-radius:2px"></div></div></div></div><div class="cnt"><div><div class="sh"><div class="st">Receitas</div></div><div class="cc">'+(rRows||'<div class="empty">Sem receitas</div>')+'<div class="add-row" id="addr-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar receita</div></div></div></div><div><div class="sh"><div class="st">Despesas</div></div><div class="cc">'+dRows+fatHtml+(!dRows&&!fatHtml?'<div class="empty">Sem despesas</div>':'')+'<div class="add-row" id="addd-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar despesa</div></div></div></div></div>';
-  // Attach events
-  var bk=document.getElementById('bk-'+ciclo);if(bk)bk.onclick=function(){goPg('pg-home',document.getElementById('n-home'));};
+  el.innerHTML=''
+    +'<div class="cnt">'
+      +'<div><div class="sh"><div class="st">Receitas</div>'
+        +'<div class="mnav" style="background:var(--gr4)"><button class="mnb" style="color:var(--gr)" id="pm2-'+ciclo+'">‹</button>'
+        +'<span style="color:var(--gr);font-size:11px;font-weight:800">'+MS3[m]+'</span>'
+        +'<button class="mnb" style="color:var(--gr)" id="nm3-'+ciclo+'">›</button></div>'
+        +'</div>'
+        +'<div class="cc">'+(rRows||'<div class="empty">Sem receitas</div>')
+        +'<div class="add-row" id="addr-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar receita</div></div></div></div>'
+      +'<div><div class="sh"><div class="st">Despesas</div></div>'
+        +'<div class="cc">'+dRows+fatHtml
+        +(!dRows&&!fatHtml?'<div class="empty">Sem despesas</div>':'')
+        +'<div class="add-row" id="addd-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar despesa</div></div></div></div>'
+    +'</div>';
+
+  // Events
+  var hbk=document.getElementById('hbk-'+ciclo);if(hbk)hbk.onclick=function(){goPg('pg-home',document.getElementById('n-home'));};
   var pm=document.getElementById('pm-'+ciclo);if(pm)pm.onclick=function(){chM(-1);};
-  var nm=document.getElementById('nm-'+ciclo);if(nm)nm.onclick=function(){chM(1);};
+  var nm=document.getElementById('nm2-'+ciclo);if(nm)nm.onclick=function(){chM(1);};
+  var pm2=document.getElementById('pm2-'+ciclo);if(pm2)pm2.onclick=function(){chM(-1);};
+  var nm3=document.getElementById('nm3-'+ciclo);if(nm3)nm3.onclick=function(){chM(1);};
   var addr=document.getElementById('addr-'+ciclo);if(addr)addr.onclick=function(){openModal('receita',null,ciclo);};
   var addd=document.getElementById('addd-'+ciclo);if(addd)addd.onclick=function(){openModal('despesa',null,ciclo);};
   delegateIr(document.getElementById(elId));
+  // Attach fatura row clicks
+  fatRows.forEach(function(_,fi){
+    var el2=document.getElementById('fr-'+ciclo+'-'+fi);
+    if(el2)el2.onclick=function(){goPg('pg-cards',document.getElementById('n-cards'));};
+  });
 }
 function rAnual(){
   var H='<thead><tr><th>Item</th>'+MS3.map(function(m){return '<th>'+m+'</th>';}).join('')+'<th>TOTAL</th></tr></thead>';
