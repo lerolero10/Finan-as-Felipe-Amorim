@@ -657,6 +657,15 @@ function fatResumoHome(m){
 }
 function rC5(){bldCiclo(5,'c5-c');}
 function rC20(){bldCiclo(20,'c20-c');}
+
+function activePage(){
+  var pages=['pg-home','pg-c5','pg-c20','pg-anual','pg-cards'];
+  for(var i=0;i<pages.length;i++){
+    var el=document.getElementById(pages[i]);
+    if(el&&el.classList.contains('on'))return pages[i];
+  }
+  return 'pg-home';
+}
 function bldCiclo(ciclo,elId){
   var m=M,ant=ciclo===5?antVal(m):0,rec=sR(ciclo,m),desp=sD(ciclo,m)+fatCiclo(ciclo,m),bal=rec-desp;
   var pct=rec>0?Math.min(desp/rec*100,100):0,lbl=ciclo===5?'5\u00ba Dia \u00datil':'Dia 20';
@@ -674,8 +683,10 @@ function bldCiclo(ciclo,elId){
       +'<div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';
   }).join('');
 
-  // Header
-  var ini2=CU==='raquel'?'R':'FA';
+  // Header — only update when this ciclo page is visible
+  var thisPage=ciclo===5?'pg-c5':'pg-c20';
+  if(activePage()===thisPage){
+    var ini2=CU==='raquel'?'R':'FA';
   document.getElementById('hdr').innerHTML=
     '<div class="hdr-top">'
       +'<div class="hdr-user"><div class="av">'+ini2+'</div>'
@@ -700,9 +711,10 @@ function bldCiclo(ciclo,elId){
         +'<div class="pill">'+pct.toFixed(0)+'% comprometido</div>'
       +'</div>'
     +'</div>';
-  document.getElementById('hbk').onclick=function(){goPg('pg-home',document.getElementById('n-home'));};
-  document.getElementById('hpm').onclick=function(){chM(-1);};
-  document.getElementById('hnm').onclick=function(){chM(1);};
+    document.getElementById('hbk').onclick=function(){goPg('pg-home',document.getElementById('n-home'));};
+    document.getElementById('hpm').onclick=function(){chM(-1);};
+    document.getElementById('hnm').onclick=function(){chM(1);};
+  } // end if activePage
 
   // Legend card
   var legHtml=''
