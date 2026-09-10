@@ -477,6 +477,15 @@ function rHome(){
   var pct=rec>0?Math.min(desp/rec*100,100):0;
   var nm=CU==='raquel'?'Raquel':'Felipe A.',ini=CU==='raquel'?'R':'FA';
   var anoLbl=DB.nomeAno?CA+' · '+DB.nomeAno:String(CA);
+
+  // Annual accumulator (needed in header)
+  var tR2=0,tD2=0;
+  for(var i=0;i<12;i++){
+    tR2+=sR(5,i)+sR(20,i);
+    tD2+=sD(5,i)+fatCiclo(5,i)+sD(20,i)+fatCiclo(20,i);
+  }
+  var sA=tR2-tD2,pA=tR2>0?Math.min(tD2/tR2*100,100):0;
+
   var corBal=bal>=0?'#a8f0c0':'#ffb3b3';
   var corBar=pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)';
 
@@ -493,24 +502,30 @@ function rHome(){
         +'<button class="mnb" id="hdr-next">›</button></div>'
       +'</div></div>'
     +'<div class="bal-sec">'
-      +'<div class="bal-lbl">Receitas − Despesas · '+MS3[m]+'</div>'
+      +'<div class="bal-lbl">Receitas \u2212 Despesas \u00b7 '+MS3[m]+'</div>'
       +'<div class="bal-row">'
-        +'<div class="bal-val" id="hdr-bal" style="color:'+corBal+'">'+(HB?'R$ ••••••':fmt(bal,false))+'</div>'
-        +'<button class="eye-btn" id="hdr-eye">'+(HB?'👁️':'🙈')+'</button>'
+        +'<div class="bal-val" id="hdr-bal" style="color:'+corBal+'">'+(HB?'R$ \u2022\u2022\u2022\u2022\u2022\u2022':fmt(bal,false))+'</div>'
+        +'<button class="eye-btn" id="hdr-eye">'+(HB?'\u{1F441}':'\u{1F648}')+'</button>'
       +'</div>'
-      +(ant!==0
-        ?'<div style="display:flex;align-items:center;gap:6px;margin-top:5px">'
-          +'<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5)">Acumulado anterior</div>'
-          +'<div style="font-size:12px;font-weight:900;color:'+(ant>=0?'rgba(168,240,192,.85)':'rgba(255,180,180,.85)')+'">'+fmt(ant,false)+'</div>'
+      +'<div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap">'
+        +(ant!==0
+          ?'<div style="display:flex;align-items:center;gap:4px">'
+            +'<span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45)">M\u00eas anterior</span>'
+            +'<span style="font-size:11px;font-weight:900;color:'+(ant>=0?'rgba(168,240,192,.9)':'rgba(255,160,160,.9)')+'">'+fmt(ant,false)+'</span>'
+          +'</div>'
+          :'')
+        +'<div style="display:flex;align-items:center;gap:4px">'
+          +'<span style="font-size:10px;font-weight:700;color:rgba(255,255,255,.45)">Acumulado '+CA+'</span>'
+          +'<span style="font-size:11px;font-weight:900;color:'+(sA>=0?'rgba(168,240,192,.9)':'rgba(255,160,160,.9)')+'">'+fmt(sA,false)+'</span>'
         +'</div>'
-        :'')
+      +'</div>'
       +'<div style="height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:8px;overflow:hidden">'
         +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+corBar+';border-radius:2px;transition:width .5s"></div>'
       +'</div>'
       +'<div class="pills" style="margin-top:8px">'
-        +'<div class="pill g">↑ '+fmt(rec,false)+'</div>'
-        +'<div class="pill r">↓ '+fmt(desp,false)+'</div>'
-        +(fTot>0?'<div class="pill r">💳 '+fmt(fTot,false)+'</div>':'')
+        +'<div class="pill g">\u2191 '+fmt(rec,false)+'</div>'
+        +'<div class="pill r">\u2193 '+fmt(desp,false)+'</div>'
+        +(fTot>0?'<div class="pill r">\u{1F4B3} '+fmt(fTot,false)+'</div>':'')
       +'</div>'
     +'</div>';
 
@@ -520,16 +535,8 @@ function rHome(){
   document.getElementById('hdr-next').onclick=function(){chM(1);};
   document.getElementById('hdr-eye').onclick=function(){HB=!HB;render();};
 
-  // Annual card - receitas reais (sem saldo anterior) vs despesas
-  var tR2=0,tD2=0;
-  for(var i=0;i<12;i++){
-    tR2+=sR(5,i)+sR(20,i);        // only real income, no saldo anterior
-    tD2+=sD(5,i)+fatCiclo(5,i)+sD(20,i)+fatCiclo(20,i);
-  }
-  var sA=tR2-tD2,pA=tR2>0?Math.min(tD2/tR2*100,100):0;
-
   var d5=sD(5,m)+fat5,d20=sD(20,m)+fat20,r5=sR(5,m),r20=sR(20,m);
-  var b5=ant+r5-d5,b20=r20-d20,p5=r5>0?Math.min(d5/r5*100,100):0,p20=r20>0?Math.min(d20/r20*100,100):0;
+  var b5=r5-d5,b20=r20-d20,p5=r5>0?Math.min(d5/r5*100,100):0,p20=r20>0?Math.min(d20/r20*100,100):0;
   var d5top=DB.despesas.filter(function(d){return d.ciclo===5&&(d.vals[m]||0)>0;}).slice(0,3);
   var d20top=DB.despesas.filter(function(d){return d.ciclo===20&&(d.vals[m]||0)>0;}).slice(0,3);
 
@@ -633,7 +640,7 @@ function cicloCard(ciclo,lbl,icon,dotcls,rec,desp,bal,pct,itens,m){
   var pc=pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)';
   var rows=itens.map(function(d){return irRow(d,true,m);}).join('');
   var fatHtml=fatRows.map(function(f,fi){return '<div class="ir" id="fr-'+ciclo+'-'+fi+'"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic b">💳</div></div><div class="ir-tx"><div class="ir-nm">'+f.nome+'</div><div class="ir-mt"><span class="pt">💳 '+lbl+'</span></div></div></div><div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';}).join('');
-  var html='<div class="cc"><div class="cc-head"><div class="cc-info"><div class="cc-dot '+dotcls+'">'+icon+'</div><div><div class="cc-name">'+lbl+'</div><div class="cc-date">Rec: '+fmt(rec,false)+'</div></div></div><div class="cc-bal"><div class="cc-bv '+(bal>=0?'g':'r')+'">'+fmt(bal,false)+'</div><div class="cc-bl">Balan\u00e7o</div></div></div><div class="cc-bar"><div class="cc-barf" style="width:'+pct+'%;background:'+pc+'"></div></div>'+rows+fatHtml+(!rows&&!fatHtml?'<div class="empty">Sem despesas</div>':'')+'<div class="add-row" id="add-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar despesa</div></div></div>';
+  var html='<div class="cc"><div class="cc-head"><div class="cc-info"><div class="cc-dot '+dotcls+'">'+icon+'</div><div><div class="cc-name">'+lbl+'</div><div class="cc-date">Rec: '+fmt(rec,false)+' · Desp: '+fmt(desp,false)+'</div></div></div><div class="cc-bal"><div class="cc-bv '+(bal>=0?'g':'r')+'">'+fmt(bal,false)+'</div><div class="cc-bl">Rec \u2212 Desp</div></div></div><div class="cc-bar"><div class="cc-barf" style="width:'+pct+'%;background:'+pc+'"></div></div>'+rows+fatHtml+(!rows&&!fatHtml?'<div class="empty">Sem despesas</div>':'')+'<div class="add-row" id="add-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar despesa</div></div></div>';
   return html;
 }
 function fatResumoHome(m){
