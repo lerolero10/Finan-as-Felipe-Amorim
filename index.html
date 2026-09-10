@@ -366,14 +366,7 @@ function defData(user,ano){
       {id:uid(),ciclo:5,nome:'Drywall Banheiro',tipo:'eventual',vals:[0,500,0,0,0,0,0,0,0,0,0,0],pag:'pix',cid:null},
       {id:uid(),ciclo:5,nome:'Empréstimo Sr. Rafael',tipo:'eventual',vals:[1000,1000,0,0,0,1000,1000,0,0,0,0,0],pag:'pix',cid:null},
       {id:uid(),ciclo:20,nome:'CC Porto Seguro',tipo:'variavel',vals:[1560,2297.25,2600,1060,1859,1859,1060,1060,0,0,0,0],pag:'cc',cid:CID.felipe.porto},
-      {id:uid(),ciclo:20,nome:'Praia',tipo:'fixo',vals:[350,350,350,350,350,350,0,0,0,0,0,0],pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Revisão Carro (1)',tipo:'eventual',vals:[0,0,0,112.93,112.93,112.93,112.93,112.93,0,0,0,0],pag:'cc',cid:CID.felipe.porto},
-      {id:uid(),ciclo:20,nome:'Revisão Carro (2)',tipo:'eventual',vals:[0,0,0,116.68,116.68,116.68,0,0,0,0,0,0],pag:'cc',cid:CID.felipe.porto},
-      {id:uid(),ciclo:20,nome:'Projetinho',tipo:'eventual',vals:[0,0,0,0,380,0,0,0,0,0,0,0],pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Amor',tipo:'eventual',vals:[0,0,0,0,600,0,0,0,0,0,0,0],pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Presente Mãe + Fran',tipo:'eventual',vals:[0,0,0,0,400,0,0,0,0,0,0,0],pag:'pix',cid:null},
-      {id:uid(),ciclo:20,nome:'Almoço',tipo:'eventual',vals:[0,0,0,0,880,0,0,0,0,0,0,0],pag:'pix',cid:null}
-    ];
+      ];
   }
   return base;
 }
@@ -479,9 +472,9 @@ function chM(d){M=(M+d+12)%12;render();}
 function render(){autoSaldo();rHome();rC5();rC20();rAnual();rCards();}
 
 function rHome(){
-  var m=M,ant=antVal(m),rec=recMes(m),desp=despMes(m),bal=ant+rec-desp;
+  var m=M,ant=antVal(m),rec=recMes(m),desp=despMes(m),bal=rec-desp;
   var fat5=fatCiclo(5,m),fat20=fatCiclo(20,m),fTot=fat5+fat20;
-  var pct=(rec+ant)>0?Math.min(desp/(rec+ant)*100,100):0;
+  var pct=rec>0?Math.min(desp/rec*100,100):0;
   var nm=CU==='raquel'?'Raquel':'Felipe A.',ini=CU==='raquel'?'R':'FA';
   var anoLbl=DB.nomeAno?CA+' · '+DB.nomeAno:String(CA);
   var corBal=bal>=0?'#a8f0c0':'#ffb3b3';
@@ -500,18 +493,23 @@ function rHome(){
         +'<button class="mnb" id="hdr-next">›</button></div>'
       +'</div></div>'
     +'<div class="bal-sec">'
-      +'<div class="bal-lbl">Balanço geral · '+MS3[m]+'</div>'
+      +'<div class="bal-lbl">Receitas − Despesas · '+MS3[m]+'</div>'
       +'<div class="bal-row">'
-        +'<div class="bal-val" id="hdr-bal">'+(HB?'R$ ••••••':fmt(bal,false))+'</div>'
+        +'<div class="bal-val" id="hdr-bal" style="color:'+corBal+'">'+(HB?'R$ ••••••':fmt(bal,false))+'</div>'
         +'<button class="eye-btn" id="hdr-eye">'+(HB?'👁️':'🙈')+'</button>'
       +'</div>'
-      +'<div style="height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:10px;overflow:hidden">'
+      +(ant!==0
+        ?'<div style="display:flex;align-items:center;gap:6px;margin-top:5px">'
+          +'<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5)">Acumulado anterior</div>'
+          +'<div style="font-size:12px;font-weight:900;color:'+(ant>=0?'rgba(168,240,192,.85)':'rgba(255,180,180,.85)')+'">'+fmt(ant,false)+'</div>'
+        +'</div>'
+        :'')
+      +'<div style="height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:8px;overflow:hidden">'
         +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+corBar+';border-radius:2px;transition:width .5s"></div>'
       +'</div>'
       +'<div class="pills" style="margin-top:8px">'
         +'<div class="pill g">↑ '+fmt(rec,false)+'</div>'
         +'<div class="pill r">↓ '+fmt(desp,false)+'</div>'
-        +(ant!==0?'<div class="pill">→ '+fmt(ant,false)+'</div>':'')
         +(fTot>0?'<div class="pill r">💳 '+fmt(fTot,false)+'</div>':'')
       +'</div>'
     +'</div>';
@@ -653,77 +651,112 @@ function fatResumoHome(m){
 function rC5(){bldCiclo(5,'c5-c');}
 function rC20(){bldCiclo(20,'c20-c');}
 function bldCiclo(ciclo,elId){
-  var m=M,ant=ciclo===5?antVal(m):0,rec=sR(ciclo,m),desp=sD(ciclo,m)+fatCiclo(ciclo,m),bal=ant+rec-desp;
+  var m=M,ant=ciclo===5?antVal(m):0,rec=sR(ciclo,m),desp=sD(ciclo,m)+fatCiclo(ciclo,m),bal=rec-desp;
   var pct=rec>0?Math.min(desp/rec*100,100):0,lbl=ciclo===5?'5\u00ba Dia \u00datil':'Dia 20';
-  var pc=pct<70?'rgba(168,240,192,.8)':pct<90?'rgba(255,200,100,.8)':'rgba(255,150,150,.8)';
+  var corBal=bal>=0?'#a8f0c0':'#ffb3b3',corBar=pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)';
   var recs=DB.receitas.filter(function(r){return r.ciclo===ciclo&&r.nome!=='Saldo Anterior'&&(r.vals[m]||0)!==0;});
   var desps=DB.despesas.filter(function(d){return d.ciclo===ciclo&&(d.vals[m]||0)!==0;});
   var fatRows=fatRowsCiclo(ciclo,m);
   var rRows=recs.map(function(r){return irRow(r,false,m);}).join('');
   var dRows=desps.map(function(d){return irRow(d,true,m);}).join('');
-  var fatHtml=fatRows.map(function(f,fi){return '<div class="ir" id="fr-'+ciclo+'-'+fi+'"><div class="ir-l"><div class="ir-ic-wrap"><div class="ir-ic b">💳</div></div><div class="ir-tx"><div class="ir-nm">'+f.nome+'</div><div class="ir-mt"><span class="pt">💳 '+lbl+'</span></div></div></div><div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';}).join('');
+  var fatHtml=fatRows.map(function(f,fi){
+    return '<div class="ir" id="fr-'+ciclo+'-'+fi+'"><div class="ir-l">'
+      +'<div class="ir-ic-wrap"><div class="ir-ic b">\u{1F4B3}</div></div>'
+      +'<div class="ir-tx"><div class="ir-nm">'+f.nome+'</div>'
+      +'<div class="ir-mt"><span class="pt">\u{1F4B3} '+lbl+'</span></div></div></div>'
+      +'<div class="ir-r"><div class="ir-vl r">'+fmt(f.val)+'</div></div></div>';
+  }).join('');
 
-  // Update main header with ciclo panorama
-  var hdr=document.getElementById('hdr');
+  // Header
   var ini2=CU==='raquel'?'R':'FA';
-  var corBal2=bal>=0?'#a8f0c0':'#ffb3b3';
-  var corBar2=pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)';
-  hdr.innerHTML=
+  document.getElementById('hdr').innerHTML=
     '<div class="hdr-top">'
       +'<div class="hdr-user"><div class="av">'+ini2+'</div>'
-      +'<div><div class="hdr-name">'+(ciclo===5?'📅':'📆')+' '+lbl+'</div>'
-      +'<div class="hdr-sub">'+MS3[m]+' · '+CA+'</div></div></div>'
+      +'<div><div class="hdr-name">'+(ciclo===5?'\u{1F4C5}':'\u{1F4C6}')+' '+lbl+'</div>'
+      +'<div class="hdr-sub">'+MS3[m]+' \u00b7 '+CA+'</div></div></div>'
       +'<div class="hdr-right">'
-        +'<button class="hdr-btn" id="hbk-'+ciclo+'">← Início</button>'
-        +'<div class="mnav"><button class="mnb" id="pm-'+ciclo+'">‹</button>'
+        +'<button class="hdr-btn" id="hbk">&#8592; In\u00edcio</button>'
+        +'<div class="mnav"><button class="mnb" id="hpm">&#8249;</button>'
         +'<span>'+MS3[m]+'</span>'
-        +'<button class="mnb" id="nm2-'+ciclo+'">›</button></div>'
+        +'<button class="mnb" id="hnm">&#8250;</button></div>'
       +'</div></div>'
     +'<div class="bal-sec">'
-      +'<div class="bal-lbl">Balanço · '+lbl+' · '+MS3[m]+'</div>'
-      +'<div class="bal-row">'
-        +'<div class="bal-val" style="color:'+corBal2+'">'+fmt(bal,false)+'</div>'
-      +'</div>'
+      +'<div class="bal-lbl">Receitas \u2212 Despesas \u00b7 '+lbl+' \u00b7 '+MS3[m]+'</div>'
+      +'<div class="bal-row"><div class="bal-val" style="color:'+corBal+'">'+fmt(bal,false)+'</div></div>'
       +'<div style="height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin-top:10px;overflow:hidden">'
-        +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+corBar2+';border-radius:2px"></div>'
+        +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+corBar+';border-radius:2px"></div>'
       +'</div>'
       +'<div class="pills" style="margin-top:8px">'
-        +'<div class="pill g">↑ '+fmt(rec,false)+'</div>'
-        +'<div class="pill r">↓ '+fmt(desp,false)+'</div>'
-        +(ant!==0?'<div class="pill">→ '+fmt(ant,false)+'</div>':'')
+        +'<div class="pill g">\u2191 '+fmt(rec,false)+'</div>'
+        +'<div class="pill r">\u2193 '+fmt(desp,false)+'</div>'
+        +(ant!==0?'<div class="pill">\u2192 '+fmt(ant,false)+'</div>':'')
         +'<div class="pill">'+pct.toFixed(0)+'% comprometido</div>'
       +'</div>'
     +'</div>';
+  document.getElementById('hbk').onclick=function(){goPg('pg-home',document.getElementById('n-home'));};
+  document.getElementById('hpm').onclick=function(){chM(-1);};
+  document.getElementById('hnm').onclick=function(){chM(1);};
 
+  // Legend card
+  var legHtml=''
+    +'<div class="cc" style="background:var(--gll);border:1.5px solid var(--gr3)">'
+      +'<div style="padding:12px 15px">'
+        +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">'
+          +'<div><div style="font-size:9px;font-weight:800;color:var(--gr2);text-transform:uppercase;margin-bottom:3px">Receitas</div>'
+            +'<div style="font-size:15px;font-weight:900;color:var(--g3)">'+fmt(rec,false)+'</div></div>'
+          +'<div><div style="font-size:9px;font-weight:800;color:var(--gr2);text-transform:uppercase;margin-bottom:3px">Despesas</div>'
+            +'<div style="font-size:15px;font-weight:900;color:var(--rd)">'+fmt(desp,false)+'</div></div>'
+          +'<div><div style="font-size:9px;font-weight:800;color:var(--gr2);text-transform:uppercase;margin-bottom:3px">Balan\u00e7o</div>'
+            +'<div style="font-size:15px;font-weight:900;color:'+(bal>=0?'var(--g3)':'var(--rd)')+'">'+fmt(bal,false)+'</div></div>'
+        +'</div>'
+        +(ant!==0
+          ?'<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--gr3);display:flex;justify-content:space-between;align-items:center">'
+            +'<div style="font-size:10px;font-weight:800;color:var(--gr2)">\u2192 Saldo anterior inclu\u00eddo</div>'
+            +'<div style="font-size:12px;font-weight:900;color:var(--g3)">'+fmt(ant,false)+'</div></div>'
+          :'')
+        +'<div style="height:4px;background:var(--gr4);border-radius:2px;margin-top:10px;overflow:hidden">'
+          +'<div style="height:100%;width:'+pct.toFixed(1)+'%;background:'+corBar+';border-radius:2px;transition:width .5s"></div>'
+        +'</div>'
+        +'<div style="font-size:9px;font-weight:800;color:var(--gr2);text-align:right;margin-top:4px">'+pct.toFixed(0)+'% comprometido</div>'
+      +'</div>'
+    +'</div>';
+
+  // Content
   var el=document.getElementById(elId);
   el.innerHTML=''
     +'<div class="cnt">'
-      +'<div><div class="sh"><div class="st">Receitas</div>'
-        +'<div class="mnav" style="background:var(--gr4)"><button class="mnb" style="color:var(--gr)" id="pm2-'+ciclo+'">‹</button>'
-        +'<span style="color:var(--gr);font-size:11px;font-weight:800">'+MS3[m]+'</span>'
-        +'<button class="mnb" style="color:var(--gr)" id="nm3-'+ciclo+'">›</button></div>'
+      +legHtml
+      +'<div>'
+        +'<div class="sh"><div class="st">Receitas</div>'
+          +'<div class="mnav" style="background:var(--gr4)">'
+            +'<button class="mnb" style="color:var(--gr)" id="cpm-'+ciclo+'">\u2039</button>'
+            +'<span style="color:var(--gr);font-size:11px;font-weight:800">'+MS3[m]+'</span>'
+            +'<button class="mnb" style="color:var(--gr)" id="cnm-'+ciclo+'">\u203a</button>'
+          +'</div></div>'
+        +'<div class="cc">'
+          +(rRows||'<div class="empty">Sem receitas</div>')
+          +'<div class="add-row" id="addr-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar receita</div></div>'
         +'</div>'
-        +'<div class="cc">'+(rRows||'<div class="empty">Sem receitas</div>')
-        +'<div class="add-row" id="addr-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar receita</div></div></div></div>'
-      +'<div><div class="sh"><div class="st">Despesas</div></div>'
-        +'<div class="cc">'+dRows+fatHtml
-        +(!dRows&&!fatHtml?'<div class="empty">Sem despesas</div>':'')
-        +'<div class="add-row" id="addd-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar despesa</div></div></div></div>'
+      +'</div>'
+      +'<div>'
+        +'<div class="sh"><div class="st">Despesas</div></div>'
+        +'<div class="cc">'
+          +dRows+fatHtml
+          +(!dRows&&!fatHtml?'<div class="empty">Sem despesas</div>':'')
+          +'<div class="add-row" id="addd-'+ciclo+'"><div class="add-ic">+</div><div class="add-lb">Adicionar despesa</div></div>'
+        +'</div>'
+      +'</div>'
     +'</div>';
 
   // Events
-  var hbk=document.getElementById('hbk-'+ciclo);if(hbk)hbk.onclick=function(){goPg('pg-home',document.getElementById('n-home'));};
-  var pm=document.getElementById('pm-'+ciclo);if(pm)pm.onclick=function(){chM(-1);};
-  var nm=document.getElementById('nm2-'+ciclo);if(nm)nm.onclick=function(){chM(1);};
-  var pm2=document.getElementById('pm2-'+ciclo);if(pm2)pm2.onclick=function(){chM(-1);};
-  var nm3=document.getElementById('nm3-'+ciclo);if(nm3)nm3.onclick=function(){chM(1);};
+  var cpm=document.getElementById('cpm-'+ciclo);if(cpm)cpm.onclick=function(){chM(-1);};
+  var cnm=document.getElementById('cnm-'+ciclo);if(cnm)cnm.onclick=function(){chM(1);};
   var addr=document.getElementById('addr-'+ciclo);if(addr)addr.onclick=function(){openModal('receita',null,ciclo);};
   var addd=document.getElementById('addd-'+ciclo);if(addd)addd.onclick=function(){openModal('despesa',null,ciclo);};
-  delegateIr(document.getElementById(elId));
-  // Attach fatura row clicks
+  delegateIr(el);
   fatRows.forEach(function(_,fi){
-    var el2=document.getElementById('fr-'+ciclo+'-'+fi);
-    if(el2)el2.onclick=function(){goPg('pg-cards',document.getElementById('n-cards'));};
+    var fr=document.getElementById('fr-'+ciclo+'-'+fi);
+    if(fr)fr.onclick=function(){goPg('pg-cards',document.getElementById('n-cards'));};
   });
 }
 function rAnual(){
