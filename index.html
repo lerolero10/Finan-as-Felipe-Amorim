@@ -204,6 +204,19 @@ tbody td:first-child{text-align:left;font-weight:800;color:var(--dk);padding-lef
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .page{display:none;animation:pin .22s ease}.page.on{display:block}
 @keyframes pin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+body::before{content:'';position:fixed;top:0;left:0;right:0;height:var(--st);background:var(--g1);z-index:400;pointer-events:none}
+.ir-pay{width:26px;height:26px;border-radius:50%;border:2px solid var(--gr3);background:var(--wh);color:transparent;font-size:13px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;padding:0}
+.ir-pay.on{background:var(--g3);border-color:var(--g3);color:#fff}
+.ir.paid .ir-nm,.ir.paid .ir-vl{text-decoration:line-through;opacity:.5}
+.ir-r{display:flex;align-items:center;gap:10px}
+.kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.kpi{background:var(--wh);border-radius:14px;padding:12px 14px;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.kpi .kl{font-size:10px;font-weight:800;color:var(--gr);text-transform:uppercase;letter-spacing:.04em}
+.kpi .kv{font-size:17px;font-weight:900;margin-top:3px}
+.kpi .kv.o{color:var(--or)}.kpi .kv.g{color:var(--g3)}
+.kpi .ks{font-size:10px;font-weight:700;color:var(--gr2);margin-top:2px}
+.yb{background:none;border:none;color:rgba(255,255,255,.8);font-size:13px;font-weight:900;padding:0 5px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -394,7 +407,7 @@ function ensureBaseUsers(){
   if(changed)saveUsers(users);
 }
 function ensureMissingItems(){
-  if(!CU||!DB)return;var changed=false;
+  if(!CU||!DB)return;var changed=migSal(DB,CU);
   if(CU==='felipe'&&!DB.despesas.find(function(d){return d.nome==='Lazer + Compras';})){
     DB.despesas.push({id:uid(),ciclo:5,nome:'Lazer + Compras',tipo:'variavel',vals:[0,500,1860,0,0,1000,1000,1000,1000,1000,1000,1000],pag:'cc',cid:'cid_f_itau'});changed=true;
   }
@@ -445,8 +458,46 @@ function fatCiclo(ciclo,m){return DB.cartoes.filter(function(c){return(c.vencime
 function recMes(m){return sR(5,m)+sR(20,m);}
 function despMes(m){return sD(5,m)+fatCiclo(5,m)+sD(20,m)+fatCiclo(20,m);}
 function balMes(m){return antVal(m)+recMes(m)-despMes(m);}
+function isPago(d,m){return !!(d.pago&&d.pago[m]);}
+function togglePago(id,m){var d=DB.despesas.find(function(x){return x.id===id;});if(!d)return;if(!d.pago)d.pago={};d.pago[m]=!d.pago[m];saveDB();render();toast(d.pago[m]?'Marcada como paga \u2713':'Marcada como a pagar');}
+function paidMes(m){return DB.despesas.reduce(function(s,d){return s+(isPago(d,m)?(d.vals[m]||0):0);},0);}
+function yearClosing(y){
+  var raw=localStorage.getItem(dbKey(CU,y));if(!raw)return null;
+  var sd=DB,sa=CA;try{DB=JSON.parse(raw);CA=y;autoSaldo();return balMes(11);}finally{DB=sd;CA=sa;}
+}
+function migSal(db,user){
+  if(user!=='felipe'||db.ano!==2026||db.mSal)return false;
+  var d5=Math.round(8100*3721/5871*100)/100,d20=Math.round((8100-d5)*100)/100;
+  db.receitas.forEach(function(r){
+    if(r.nome==='Sal\u00e1rio Felipe'){var v=r.ciclo===5?d5:d20;r.vals[10]=v;r.vals[11]=v;}
+    if(r.nome==='Outros'&&r.ciclo===5){r.vals[10]=4250;r.vals[11]=4250;}
+  });
+  db.mSal=1;return true;
+}
+function newYearDB(user,y){
+  var raw=localStorage.getItem(dbKey(user,y-1));var prev=raw?JSON.parse(raw):defData(user,y-1);
+  migSal(prev,user);
+  var nd=JSON.parse(JSON.stringify(prev));nd.ano=y;nd.nomeAno='';nd.faturas={};nd.carry=true;delete nd.mSal;
+  function roll(it){var last=it.vals[11]||0;var keep=(it.tipo==='fixo'||it.tipo==='variavel')&&!it.parc;it.vals=it.vals.map(function(){return keep?last:0;});delete it.pago;}
+  nd.receitas.forEach(function(r){if(r.nome==='Saldo Anterior'){r.vals=r.vals.map(function(){return 0;});}else roll(r);});
+  nd.despesas.forEach(roll);
+  if(user==='felipe'&&y===2027){
+    nd.despesas=nd.despesas.filter(function(d){return d.nome!=='IPVA'&&d.nome!=='Viagem';});
+    nd.despesas.push({id:uid(),ciclo:5,nome:'IPVA',tipo:'fixo',vals:[900,900,900,900,900,0,0,0,0,0,0,0],parc:{total:5,start:0},venc:8,pag:'boleto',cid:null});
+    nd.despesas.push({id:uid(),ciclo:5,nome:'Viagem',tipo:'eventual',vals:[0,750,750,750,750,750,750,750,0,0,0,0],venc:10,pag:'pix',cid:null});
+  }
+  localStorage.setItem(dbKey(user,y),JSON.stringify(nd));return nd;
+}
+function setYear(y){
+  if(y<2026||y>TODAY.getFullYear()+1)return;
+  var cur=DB;saveDB();CA=y;
+  if(localStorage.getItem(dbKey(CU,y)))DB=loadDB(CU,y);
+  else{var sd=DB;DB=null;DB=newYearDB(CU,y);}
+  ensureMissingItems();saveMeta({CU:CU,CA:CA});render();toast('Ano '+y);
+}
 function autoSaldo(){
   var sr=DB.receitas.find(function(r){return r.nome==='Saldo Anterior';});if(!sr)return;var changed=false;
+  if(DB.carry){var cl=yearClosing(CA-1);if(cl!==null&&Math.abs((sr.vals[0]||0)-cl)>0.01){sr.vals[0]=parseFloat(cl.toFixed(2));changed=true;}}
   for(var i=1;i<12;i++){
     var p=i-1,recReal=DB.receitas.filter(function(r){return r.nome!=='Saldo Anterior';}).reduce(function(s,r){return s+(r.vals[p]||0);},0);
     var despTotal=sD(5,p)+fatCiclo(5,p)+sD(20,p)+fatCiclo(20,p);
@@ -494,7 +545,7 @@ function rHome(){
   hdr.innerHTML=
     '<div class="hdr-top">'
       +'<div class="hdr-user"><div class="av">'+ini+'</div>'
-      +'<div><div class="hdr-name">'+nm+'</div><div class="hdr-sub">'+anoLbl+'</div></div></div>'
+      +'<div><div class="hdr-name">'+nm+'</div><div class="hdr-sub"><button class="yb" id="yr-prev">\u2039</button>'+anoLbl+'<button class="yb" id="yr-next">\u203a</button></div></div></div>'
       +'<div class="hdr-right">'
         +'<button class="hdr-btn" id="hdr-trocar">Trocar</button>'
         +'<div class="mnav"><button class="mnb" id="hdr-prev">‹</button>'
@@ -534,6 +585,8 @@ function rHome(){
   document.getElementById('hdr-prev').onclick=function(){chM(-1);};
   document.getElementById('hdr-next').onclick=function(){chM(1);};
   document.getElementById('hdr-eye').onclick=function(){HB=!HB;render();};
+  document.getElementById('yr-prev').onclick=function(){setYear(CA-1);};
+  document.getElementById('yr-next').onclick=function(){setYear(CA+1);};
 
   var d5=sD(5,m)+fat5,d20=sD(20,m)+fat20,r5=sR(5,m),r20=sR(20,m);
   var b5=r5-d5,b20=r20-d20,p5=r5>0?Math.min(d5/r5*100,100):0,p20=r20>0?Math.min(d20/r20*100,100):0;
@@ -553,7 +606,11 @@ function rHome(){
   rc.innerHTML='<div class="sl">Receitas \u203a</div><div class="sv g">'+fmt(rec,false)+'</div><div class="ss">Dia 5: '+fmt(r5,false)+'</div><div class="ss">Dia 20: '+fmt(r20,false)+'</div>';
   var dc=document.createElement('div');dc.className='sum-card';dc.onclick=function(){openDetalhe('desp',m);};
   dc.innerHTML='<div class="sl">Despesas \u203a</div><div class="sv r">'+fmt(desp,false)+'</div><div class="ss">'+pct.toFixed(0)+'% comprometido</div><div class="prog"><div class="pf" style="width:'+pct+'%;background:'+(pct<70?'var(--g3)':pct<90?'var(--or)':'var(--rd)')+'"></div></div>';
-  sr2.appendChild(rc);sr2.appendChild(dc);sec1.appendChild(sr2);hc.appendChild(sec1);
+  sr2.appendChild(rc);sr2.appendChild(dc);sec1.appendChild(sr2);
+  var pg=paidMes(m),ap=Math.max(desp-pg,0);
+  var kp=document.createElement('div');kp.className='kpi-row';
+  kp.innerHTML='<div class="kpi"><div class="kl">Despesas a pagar</div><div class="kv o">'+fmt(ap,false)+'</div><div class="ks">'+(desp>0?(ap/desp*100).toFixed(0):0)+'% do m\u00eas</div></div><div class="kpi"><div class="kl">Despesas pagas</div><div class="kv g">'+fmt(pg,false)+'</div><div class="ks">'+(desp>0?(pg/desp*100).toFixed(0):0)+'% do m\u00eas</div></div>';
+  sec1.appendChild(kp);hc.appendChild(sec1);
 
   // Annual card
   var sec2=document.createElement('div');
@@ -605,11 +662,14 @@ function irRow(item,isD,m,ctx){
   var wrap='<div class="ir-ic-wrap"><div class="ir-ic '+bg+'">'+getIco(item.nome)+'</div>'
     +'<button class="ir-del" data-iid="'+item.id+'" data-arr="'+(isD?'d':'r')+'" data-m="'+(m!==undefined?m:M)+'">✕</button></div>';
   var pLbl2=isD?' <span class="pt">'+pagLbl(item.pag,item.cid)+'</span>':'';
-  return '<div class="ir" data-iid="'+item.id+'" data-type="'+(isD?'despesa':'receita')+'">'
+  var mm=m!==undefined?m:M,paid=isD&&isPago(item,mm);
+  if(isD&&item.venc)pLbl2+=' <span class="pt">dia '+item.venc+'</span>';
+  var payBtn=isD?'<button class="ir-pay'+(paid?' on':'')+'" data-pay="'+item.id+'" data-m="'+mm+'">\u2713</button>':'';
+  return '<div class="ir'+(paid?' paid':'')+'" data-iid="'+item.id+'" data-type="'+(isD?'despesa':'receita')+'">'
     +'<div class="ir-l">'+wrap
     +'<div class="ir-tx"><div class="ir-nm">'+item.nome+'</div>'
     +'<div class="ir-mt">'+tagH(item)+pLbl2+'</div></div></div>'
-    +'<div class="ir-r"><div class="ir-vl '+(val===0?'z':'')+'">'+fmt(val)+'</div></div></div>';
+    +'<div class="ir-r">'+payBtn+'<div class="ir-vl '+(val===0?'z':'')+'">'+fmt(val)+'</div></div></div>';
 }
 function attachIrEvents(items,isD,m){
   // No-op: events attached via event delegation on container
@@ -619,6 +679,8 @@ function delegateIr(container){
   container._irDelegated=true;
   container.addEventListener('click',function(e){
     // Click on del button
+    var pb=e.target.closest('.ir-pay');
+    if(pb){e.stopPropagation();togglePago(pb.dataset.pay,parseInt(pb.dataset.m));return;}
     var del=e.target.closest('.ir-del');
     if(del){
       e.stopPropagation();
