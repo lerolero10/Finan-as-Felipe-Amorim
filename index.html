@@ -465,19 +465,34 @@ function yearClosing(y){
   var raw=localStorage.getItem(dbKey(CU,y));if(!raw)return null;
   var sd=DB,sa=CA;try{DB=JSON.parse(raw);CA=y;autoSaldo();return balMes(11);}finally{DB=sd;CA=sa;}
 }
+function calcSal(g){
+  var f=[[1621,.075],[2902.84,.09],[4354.27,.12],[8475.55,.14]],inss=0,lo=0;
+  f.forEach(function(x){if(g>lo){inss+=(Math.min(g,x[0])-lo)*x[1];}lo=x[0];});
+  inss=Math.round(inss*100)/100;
+  var base=g-Math.max(inss,607.20),t=[[2428.80,0,0],[2826.65,.075,182.16],[3751.05,.15,394.00],[4664.68,.225,675.49],[1e12,.275,908.73]],ir=0;
+  for(var i=0;i<t.length;i++){if(base<=t[i][0]){ir=Math.max(base*t[i][1]-t[i][2],0);break;}}
+  var red=g<=5000?312.89:g<=7350?978.62-0.133145*g:0;ir=Math.max(ir-red,0);ir=Math.round(ir*100)/100;
+  var ir20=Math.round(ir*0.4*100)/100,ir5=Math.round((ir-ir20)*100)/100;
+  var d20=Math.round((g*0.4-ir20)*100)/100,d5=Math.round((g*0.6-inss-ir5)*100)/100;
+  return{inss:inss,ir:ir,ir20:ir20,ir5:ir5,d5:d5,d20:d20};
+}
 function migSal(db,user){
-  if(user!=='felipe'||db.ano!==2026||db.mSal)return false;
-  var d5=Math.round(8100*3721/5871*100)/100,d20=Math.round((8100-d5)*100)/100;
-  db.receitas.forEach(function(r){
-    if(r.nome==='Sal\u00e1rio Felipe'){var v=r.ciclo===5?d5:d20;r.vals[10]=v;r.vals[11]=v;}
-    if(r.nome==='Outros'&&r.ciclo===5){r.vals[10]=4250;r.vals[11]=4250;}
-  });
-  db.mSal=1;return true;
+  if(user!=='felipe'||db.mSal2)return false;
+  if(db.ano===2026||db.ano===2027){
+    var c=calcSal(8100),from=db.ano===2026?10:0;
+    db.receitas.forEach(function(r){
+      for(var i=from;i<12;i++){
+        if(r.nome==='Sal\u00e1rio Felipe')r.vals[i]=r.ciclo===5?c.d5:c.d20;
+        if(r.nome==='Outros'&&r.ciclo===5)r.vals[i]=4250;
+      }
+    });
+  }
+  db.mSal=1;db.mSal2=1;return true;
 }
 function newYearDB(user,y){
   var raw=localStorage.getItem(dbKey(user,y-1));var prev=raw?JSON.parse(raw):defData(user,y-1);
   migSal(prev,user);
-  var nd=JSON.parse(JSON.stringify(prev));nd.ano=y;nd.nomeAno='';nd.faturas={};nd.carry=true;delete nd.mSal;
+  var nd=JSON.parse(JSON.stringify(prev));nd.ano=y;nd.nomeAno='';nd.faturas={};nd.carry=true;delete nd.mSal;delete nd.mSal2;
   function roll(it){var last=it.vals[11]||0;var keep=(it.tipo==='fixo'||it.tipo==='variavel')&&!it.parc;it.vals=it.vals.map(function(){return keep?last:0;});delete it.pago;}
   nd.receitas.forEach(function(r){if(r.nome==='Saldo Anterior'){r.vals=r.vals.map(function(){return 0;});}else roll(r);});
   nd.despesas.forEach(roll);
